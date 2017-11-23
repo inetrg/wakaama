@@ -52,7 +52,6 @@
 #include <stdio.h>
 #include <float.h>
 
-
 int utils_textToInt(uint8_t * buffer,
                     int length,
                     int64_t * dataP)
@@ -376,6 +375,8 @@ lwm2m_server_t * utils_findServer(lwm2m_context_t * contextP,
 lwm2m_server_t * utils_findBootstrapServer(lwm2m_context_t * contextP,
                                            void * fromSessionH)
 {
+    (void)contextP;
+    (void)fromSessionH;
 #ifdef LWM2M_CLIENT_MODE
 
     lwm2m_server_t * targetP;
