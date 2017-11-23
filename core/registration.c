@@ -1293,6 +1293,9 @@ void registration_step(lwm2m_context_t * contextP,
                        time_t currentTime,
                        time_t * timeoutP)
 {
+    (void)contextP;
+    (void)currentTime;
+    (void)timeoutP;
 #ifdef LWM2M_CLIENT_MODE
     lwm2m_server_t * targetP = contextP->serverList;
 
