@@ -63,6 +63,12 @@
 
 #include "er-coap-13.h"
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define LWM2M_LITTLE_ENDIAN
+#else
+#define LWM2M_BIG_ENDIAN
+#endif
+
 #ifdef LWM2M_WITH_LOGS
 #include <inttypes.h>
 #define LOG(STR) lwm2m_printf("[%s:%d] " STR "\r\n", __func__ , __LINE__)
