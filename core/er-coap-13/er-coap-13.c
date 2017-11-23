@@ -381,7 +381,7 @@ coap_get_variable(const uint8_t *buffer, size_t length, const char *name, const 
 
 /*-----------------------------------------------------------------------------------*/
 uint16_t
-coap_get_mid()
+coap_get_mid(void)
 {
   return ++current_mid;
 }
@@ -860,6 +860,9 @@ coap_get_query_variable(void *packet, const char *name, const char **output)
     return coap_get_variable(coap_pkt->uri_query, coap_pkt->uri_query_len, name, output);
   }
 */
+  (void)packet;
+  (void)name;
+  (void)output;
   return 0;
 }
 
