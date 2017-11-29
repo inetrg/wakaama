@@ -148,11 +148,11 @@ void bootstrap_step(lwm2m_context_t * contextP,
             break;
 
         case STATE_BS_HOLD_OFF:
-            if (targetP->registration <= currentTime)
+            if (targetP->registration <= (time_t)currentTime)
             {
                 prv_requestBootstrap(contextP, targetP);
             }
-            else if (*timeoutP > targetP->registration - currentTime)
+            else if (*timeoutP > targetP->registration - (time_t)currentTime)
             {
                 *timeoutP = targetP->registration - currentTime;
             }
@@ -163,12 +163,12 @@ void bootstrap_step(lwm2m_context_t * contextP,
             break;
 
         case STATE_BS_PENDING:
-            if (targetP->registration <= currentTime)
+            if (targetP->registration <= (time_t)currentTime)
             {
                targetP->status = STATE_BS_FAILING;
                *timeoutP = 0;
             }
-            else if (*timeoutP > targetP->registration - currentTime)
+            else if (*timeoutP > targetP->registration - (time_t)currentTime)
             {
                 *timeoutP = targetP->registration - currentTime;
             }
@@ -375,6 +375,7 @@ uint8_t bootstrap_handleCommand(lwm2m_context_t * contextP,
 {
     uint8_t result;
     lwm2m_media_type_t format;
+    (void)response;
 
     LOG_ARG("Code: %02X", message->code);
     LOG_URI(uriP);
@@ -582,6 +583,8 @@ uint8_t bootstrap_handleRequest(lwm2m_context_t * contextP,
 {
     uint8_t result;
     char * name;
+    (void)uriP;
+    (void)response;
 
     LOG_URI(uriP);
     if (contextP->bootstrapCallback == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
