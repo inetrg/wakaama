@@ -150,6 +150,9 @@ static uint8_t prv_server_discover(uint16_t instanceId,
     uint8_t result;
     int i;
 
+    (void)instanceId;
+    (void)objectP;
+
     result = COAP_205_CONTENT;
 
     // is the server asking for the full object ?
@@ -339,6 +342,9 @@ static uint8_t prv_server_execute(uint16_t instanceId,
 {
     server_instance_t * targetP;
 
+    (void)buffer;
+    (void)length;
+
     targetP = (server_instance_t *)lwm2m_list_find(objectP->instanceList, instanceId);
     if (NULL == targetP) return COAP_404_NOT_FOUND;
 
@@ -426,22 +432,6 @@ void copy_server_object(lwm2m_object_t * objectDest, lwm2m_object_t * objectSrc)
         }
         previousInstanceDest = instanceDest;
     }
-}
-
-void display_server_object(lwm2m_object_t * object)
-{
-#ifdef WITH_LOGS
-    fprintf(stdout, "  /%u: Server object, instances:\r\n", object->objID);
-    server_instance_t * serverInstance = (server_instance_t *)object->instanceList;
-    while (serverInstance != NULL)
-    {
-        fprintf(stdout, "    /%u/%u: instanceId: %u, shortServerId: %u, lifetime: %u, storing: %s, binding: %s\r\n",
-                object->objID, serverInstance->instanceId,
-                serverInstance->instanceId, serverInstance->shortServerId, serverInstance->lifetime,
-                serverInstance->storing ? "true" : "false", serverInstance->binding);
-        serverInstance = (server_instance_t *)serverInstance->next;
-    }
-#endif
 }
 
 lwm2m_object_t * get_server_object(int serverId,
