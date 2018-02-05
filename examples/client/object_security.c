@@ -540,7 +540,7 @@ lwm2m_object_t * get_security_object(int serverId,
             targetP->securityMode = LWM2M_SECURITY_MODE_PRE_SHARED_KEY;
             if (bsPskId)
             {
-                targetP->publicIdentity = strdup(bsPskId);
+                targetP->publicIdentity = lwm2m_strdup(bsPskId);
                 targetP->publicIdLen = strlen(bsPskId);
             }
             if (pskLen > 0)
