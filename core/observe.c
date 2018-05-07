@@ -164,6 +164,7 @@ uint8_t observe_handleRequest(lwm2m_context_t * contextP,
     lwm2m_observed_t * observedP;
     lwm2m_watcher_t * watcherP;
     uint32_t count;
+    (void)size;
 
     LOG_ARG("Code: %02X, server status: %s", message->code, STR_STATUS(serverP->status));
     LOG_URI(uriP);
@@ -653,7 +654,7 @@ void observe_step(lwm2m_context_t * contextP,
                     {
                         LOG_ARG("Checking minimal period (%d s)", watcherP->parameters->minPeriod);
 
-                        if (watcherP->lastTime + watcherP->parameters->minPeriod > currentTime)
+                        if (watcherP->lastTime + (time_t)watcherP->parameters->minPeriod > currentTime)
                         {
                             // Minimum Period did not elapse yet
                             interval = watcherP->lastTime + watcherP->parameters->minPeriod - currentTime;
@@ -675,7 +676,7 @@ void observe_step(lwm2m_context_t * contextP,
                 {
                     LOG_ARG("Checking maximal period (%d s)", watcherP->parameters->maxPeriod);
 
-                    if (watcherP->lastTime + watcherP->parameters->maxPeriod <= currentTime)
+                    if (watcherP->lastTime + (time_t)watcherP->parameters->maxPeriod <= currentTime)
                     {
                         LOG("Notify on maximal period");
                         notify = true;
