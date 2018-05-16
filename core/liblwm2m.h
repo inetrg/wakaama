@@ -299,7 +299,6 @@ typedef struct _lwm2m_data_t lwm2m_data_t;
 
 struct _lwm2m_data_t
 {
-    lwm2m_data_type_t type;
     uint16_t    id;
     union
     {
@@ -322,6 +321,7 @@ struct _lwm2m_data_t
             uint16_t objectInstanceId;
         } asObjLink;
     } value;
+    lwm2m_data_type_t type;
 };
 
 typedef enum
