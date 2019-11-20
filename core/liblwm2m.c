@@ -261,7 +261,6 @@ int lwm2m_configure(lwm2m_context_t * contextP,
     int i;
     uint8_t found;
 
-    LOG_ARG("endpointName: \"%s\", msisdn: \"%s\", altPath: \"%s\", numObject: %d", endpointName, msisdn, altPath, numObject);
     // This API can be called only once for now
     if (contextP->endpointName != NULL || contextP->objectList != NULL) return COAP_400_BAD_REQUEST;
 
@@ -275,9 +274,12 @@ int lwm2m_configure(lwm2m_context_t * contextP,
         if (objectList[i]->objID == LWM2M_SERVER_OBJECT_ID) found |= 0x02;
         if (objectList[i]->objID == LWM2M_DEVICE_OBJECT_ID) found |= 0x04;
     }
+    LOG_ARG("numObject: %d", numObject);
+
     if (found != 0x07) return COAP_400_BAD_REQUEST;
     if (altPath != NULL)
     {
+        LOG_ARG("altPath: \"%s\"", altPath);
         if (0 == utils_isAltPathValid(altPath))
         {
             return COAP_400_BAD_REQUEST;
@@ -292,9 +294,11 @@ int lwm2m_configure(lwm2m_context_t * contextP,
     {
         return COAP_500_INTERNAL_SERVER_ERROR;
     }
+    LOG_ARG("endpointName: \"%s\"", endpointName);
 
     if (msisdn != NULL)
     {
+        LOG_ARG("msisdn: \"%s\"", msisdn);
         contextP->msisdn = lwm2m_strdup(msisdn);
         if (contextP->msisdn == NULL)
         {
