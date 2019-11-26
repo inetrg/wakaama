@@ -152,8 +152,10 @@ lwm2m_transaction_t * transaction_new(void * sessionH,
     lwm2m_transaction_t * transacP;
     int result;
 
-    LOG_ARG("method: %d, altPath: \"%s\", mID: %d, token_len: %d",
-            method, altPath, mID, token_len);
+    LOG_ARG("method: %d, mID: %d, token_len: %d", method, mID, token_len);
+    if (altPath) {
+        LOG_ARG("altPath: \"%s\"", altPath);
+    }
     LOG_URI(uriP);
 
     // no transactions without peer

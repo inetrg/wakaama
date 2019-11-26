@@ -99,7 +99,9 @@ lwm2m_uri_t * uri_decode(char * altPath,
     lwm2m_uri_t * uriP;
     int readNum;
 
-    LOG_ARG("altPath: \"%s\"", altPath);
+    if (altPath) {
+        LOG_ARG("altPath: \"%s\"", altPath);
+    }
 
     uriP = (lwm2m_uri_t *)lwm2m_malloc(sizeof(lwm2m_uri_t));
     if (NULL == uriP) return NULL;
@@ -212,9 +214,9 @@ int lwm2m_stringToUri(const char * buffer,
     size_t head;
     int readNum;
 
-    LOG_ARG("buffer_len: %u, buffer: \"%.*s\"", buffer_len, buffer_len, buffer);
-
     if (buffer == NULL || buffer_len == 0 || uriP == NULL) return 0;
+
+    LOG_ARG("buffer_len: %u, buffer: \"%.*s\"", buffer_len, buffer_len, buffer);
 
     memset(uriP, 0, sizeof(lwm2m_uri_t));
 
