@@ -269,7 +269,8 @@ void lwm2m_data_encode_nstring(const char * string,
 void lwm2m_data_encode_int(int64_t value,
                            lwm2m_data_t * dataP)
 {
-    LOG_ARG("value: %" PRId64 "", value);
+    LOG("value: ");
+    LOG_VALUE("%" PRId64, value);
     dataP->type = LWM2M_TYPE_INTEGER;
     dataP->value.asInteger = value;
 }
@@ -334,7 +335,8 @@ int lwm2m_data_decode_int(const lwm2m_data_t * dataP,
     default:
         return 0;
     }
-    LOG_ARG("result: %d, value: %" PRId64, result, *valueP);
+    LOG_ARG("result: %d, value: ", result);
+    LOG_VALUE("%" PRId64, *valueP);
 
     return result;
 }
