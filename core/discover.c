@@ -440,3 +440,4 @@ int discover_serialize(lwm2m_context_t * contextP,
     return (int)head;
 }
 #endif
+
