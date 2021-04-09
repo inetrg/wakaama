@@ -159,6 +159,55 @@ static int prv_readAttributes(multi_option_t * query,
     return 0;
 }
 
+bool prv_access_guard(lwm2m_context_t *contextP, lwm2m_server_t *serverP, lwm2m_uri_t *uriP,
+                      coap_packet_t *msg)
+{
+    (void) msg;
+    int access = lwm2m_get_access(serverP->shortID, uriP, contextP->userData);
+    LOG_ARG("Server has access %i to the resource", access);
+
+    // FIXME: ! for now, when no access information is specified, we allow to pass
+    if (access < 0) {
+        LOG_ARG("No access information initialized!", access);
+    }
+
+    switch (msg->code)
+    {
+    case COAP_GET:
+        /* read, observe */
+        return (access & 0x01);
+
+    case COAP_POST:
+        if (!LWM2M_URI_IS_SET_INSTANCE(uriP)) {
+            /* create */
+            return (access & 0x10);
+        }
+        else if (!LWM2M_URI_IS_SET_RESOURCE(uriP)) {
+            /* write */
+            return (access & 0x02);
+        }
+        /* execute */
+        return (access & 0x04);
+
+    case COAP_PUT:
+        if (IS_OPTION(msg, COAP_OPTION_URI_QUERY)) {
+            /* write attributes, same as read, observe */
+            return (access & 0x01);
+        }
+        else if (LWM2M_URI_IS_SET_INSTANCE(uriP)) {
+            /* write */
+            return (access & 0x02);
+        }
+        return false;
+
+    case COAP_DELETE:
+        return (access & 0x08);
+
+    default:
+        return false;
+    }
+}
+
 uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                          lwm2m_uri_t * uriP,
                          lwm2m_server_t * serverP,
@@ -193,7 +242,11 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
         return COAP_IGNORE;
     }
 
-    // TODO: check ACL
+    if (!prv_access_guard(contextP, serverP, uriP, message)) {
+        /* you shall not pass */
+        LOG("Server not authorized");
+        return COAP_401_UNAUTHORIZED;
+    }
 
     switch (message->code)
     {

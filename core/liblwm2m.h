@@ -697,6 +697,19 @@ int lwm2m_remove_object(lwm2m_context_t * contextP, uint16_t id);
 int lwm2m_update_registration(lwm2m_context_t * contextP, uint16_t shortServerID, bool withObjects);
 
 void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP);
+
+/**
+ * @brief   Returns the access of a server with short ID @p server_id to a resource in @p uri.
+ *
+ * @param[in] server_id     Short ID of the server.
+ * @param[in] uri           URI of the resource to check access of.
+ * @param[in] user_data     User data provided in @ref lwm2m_init
+ *
+ * @return Access encoded according the Access Control object lists.
+ * @retval -1 if no access information is available for the given resource
+ */
+int lwm2m_get_access(uint16_t server_id, lwm2m_uri_t *uri, void *user_data);
+
 #endif
 
 #ifdef LWM2M_SERVER_MODE
