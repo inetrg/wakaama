@@ -33,7 +33,7 @@
 
 static lwm2m_attributes_t * prv_findAttributes(lwm2m_context_t * contextP,
                                                lwm2m_uri_t * uriP,
-                                               lwm2m_server_t * serverP)
+                                               lwm2m_peer_t * peer)
 {
     lwm2m_observed_t * observedP;
     lwm2m_watcher_t * watcherP;
@@ -42,14 +42,14 @@ static lwm2m_attributes_t * prv_findAttributes(lwm2m_context_t * contextP,
     paramP = NULL;
 
     if (contextP == NULL) return NULL;
-    if (serverP == NULL) return NULL;
+    if (peer == NULL) return NULL;
 
     observedP = observe_findByUri(contextP, uriP);
     if (observedP == NULL || observedP->watcherList == NULL) return NULL;
 
     for (watcherP = observedP->watcherList; watcherP != NULL; watcherP = watcherP->next)
     {
-        if (watcherP->server == serverP)
+        if (watcherP->peer == peer)
         {
             paramP = watcherP->parameters;
         }
@@ -60,7 +60,7 @@ static lwm2m_attributes_t * prv_findAttributes(lwm2m_context_t * contextP,
 
 static int prv_serializeAttributes(lwm2m_context_t * contextP,
                                    lwm2m_uri_t * uriP,
-                                   lwm2m_server_t * serverP,
+                                   lwm2m_peer_t * serverP,
                                    lwm2m_attributes_t * objectParamP,
                                    uint8_t * buffer,
                                    size_t uriLen,
@@ -154,7 +154,7 @@ static int prv_serializeAttributes(lwm2m_context_t * contextP,
 
 static int prv_serializeLinkData(lwm2m_context_t * contextP,
                                  lwm2m_data_t * tlvP,
-                                 lwm2m_server_t * serverP,
+                                 lwm2m_peer_t * serverP,
                                  lwm2m_attributes_t * objectParamP,
                                  lwm2m_uri_t * parentUriP,
                                  uint8_t * parentUriStr,
@@ -288,7 +288,7 @@ static int prv_serializeLinkData(lwm2m_context_t * contextP,
 
 int discover_serialize(lwm2m_context_t * contextP,
                        lwm2m_uri_t * uriP,
-                       lwm2m_server_t * serverP,
+                       lwm2m_peer_t * serverP,
                        int size,
                        lwm2m_data_t * dataP,
                        uint8_t ** bufferP)

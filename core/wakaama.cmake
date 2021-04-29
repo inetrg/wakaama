@@ -30,6 +30,7 @@ set(WAKAAMA_SOURCES
     ${WAKAAMA_SOURCES_DIR}/discover.c
     ${WAKAAMA_SOURCES_DIR}/block1.c
     ${WAKAAMA_SOURCES_DIR}/internals.h
+    ${WAKAAMA_SOURCES_DIR}/client_to_client.c
 	${CORE_HEADERS}
     ${EXT_SOURCES})
 

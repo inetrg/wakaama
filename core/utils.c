@@ -356,10 +356,10 @@ lwm2m_media_type_t utils_convertMediaType(coap_content_type_t type)
 }
 
 #ifdef LWM2M_CLIENT_MODE
-lwm2m_server_t * utils_findServer(lwm2m_context_t * contextP,
-                                  void * fromSessionH)
+lwm2m_peer_t *utils_findServer(lwm2m_context_t * contextP,
+                               void * fromSessionH)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     targetP = contextP->serverList;
     while (targetP != NULL
@@ -370,16 +370,33 @@ lwm2m_server_t * utils_findServer(lwm2m_context_t * contextP,
 
     return targetP;
 }
+
+#ifdef LWM2M_CLIENT_C2C
+lwm2m_peer_t *utils_findClient(lwm2m_context_t *context, void *fromSessionH)
+{
+    lwm2m_peer_t *client = context->clientList;
+
+    while (client) {
+        if (lwm2m_session_is_equal(client->sessionH, fromSessionH, context->userData)) {
+            break;
+        }
+        client = client->next;
+    }
+
+    return client;
+}
+#endif /* LWM2M_CLIENT_C2C */
+
 #endif
 
-lwm2m_server_t * utils_findBootstrapServer(lwm2m_context_t * contextP,
+lwm2m_peer_t * utils_findBootstrapServer(lwm2m_context_t * contextP,
                                            void * fromSessionH)
 {
     (void)contextP;
     (void)fromSessionH;
 #ifdef LWM2M_CLIENT_MODE
 
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     targetP = contextP->bootstrapServerList;
     while (targetP != NULL

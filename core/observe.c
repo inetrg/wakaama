@@ -95,14 +95,15 @@ static void prv_unlinkObserved(lwm2m_context_t * contextP,
 }
 
 static lwm2m_watcher_t * prv_findWatcher(lwm2m_observed_t * observedP,
-                                         lwm2m_server_t * serverP)
+                                         lwm2m_peer_t * peer)
 {
     lwm2m_watcher_t * targetP;
 
     targetP = observedP->watcherList;
-    while (targetP != NULL
-        && targetP->server != serverP)
-    {
+    while (targetP) {
+        if (targetP->peer == peer) {
+            break;
+        }
         targetP = targetP->next;
     }
 
@@ -111,7 +112,7 @@ static lwm2m_watcher_t * prv_findWatcher(lwm2m_observed_t * observedP,
 
 static lwm2m_watcher_t * prv_getWatcher(lwm2m_context_t * contextP,
                                         lwm2m_uri_t * uriP,
-                                        lwm2m_server_t * serverP)
+                                        lwm2m_peer_t * peer)
 {
     lwm2m_observed_t * observedP;
     bool allocatedObserver;
@@ -131,7 +132,7 @@ static lwm2m_watcher_t * prv_getWatcher(lwm2m_context_t * contextP,
         contextP->observedList = observedP;
     }
 
-    watcherP = prv_findWatcher(observedP, serverP);
+    watcherP = prv_findWatcher(observedP, peer);
     if (watcherP == NULL)
     {
         watcherP = (lwm2m_watcher_t *)lwm2m_malloc(sizeof(lwm2m_watcher_t));
@@ -145,7 +146,7 @@ static lwm2m_watcher_t * prv_getWatcher(lwm2m_context_t * contextP,
         }
         memset(watcherP, 0, sizeof(lwm2m_watcher_t));
         watcherP->active = false;
-        watcherP->server = serverP;
+        watcherP->peer = peer;
         watcherP->next = observedP->watcherList;
         observedP->watcherList = watcherP;
     }
@@ -155,7 +156,7 @@ static lwm2m_watcher_t * prv_getWatcher(lwm2m_context_t * contextP,
 
 uint8_t observe_handleRequest(lwm2m_context_t * contextP,
                               lwm2m_uri_t * uriP,
-                              lwm2m_server_t * serverP,
+                              lwm2m_peer_t * peer,
                               int size,
                               lwm2m_data_t * dataP,
                               coap_packet_t * message,
@@ -166,7 +167,7 @@ uint8_t observe_handleRequest(lwm2m_context_t * contextP,
     uint32_t count;
     (void)size;
 
-    LOG_ARG("Code: %02X, server status: %s", message->code, STR_STATUS(serverP->status));
+    LOG_ARG("Code: %02X, peer status: %s", message->code, STR_STATUS(peer->status));
     LOG_URI(uriP);
 
     coap_get_header_observe(message, &count);
@@ -177,7 +178,7 @@ uint8_t observe_handleRequest(lwm2m_context_t * contextP,
         if (!LWM2M_URI_IS_SET_INSTANCE(uriP) && LWM2M_URI_IS_SET_RESOURCE(uriP)) return COAP_400_BAD_REQUEST;
         if (message->token_len == 0) return COAP_400_BAD_REQUEST;
 
-        watcherP = prv_getWatcher(contextP, uriP, serverP);
+        watcherP = prv_getWatcher(contextP, uriP, peer);
         if (watcherP == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
 
         watcherP->tokenLen = message->token_len;
@@ -218,10 +219,10 @@ uint8_t observe_handleRequest(lwm2m_context_t * contextP,
         observedP = prv_findObserved(contextP, uriP);
         if (observedP)
         {
-            watcherP = prv_findWatcher(observedP, serverP);
+            watcherP = prv_findWatcher(observedP, peer);
             if (watcherP)
             {
-                observe_cancel(contextP, watcherP->lastMid, serverP->sessionH);
+                observe_cancel(contextP, watcherP->lastMid, peer->sessionH);
             }
         }
         return COAP_205_CONTENT;
@@ -246,7 +247,7 @@ void observe_cancel(lwm2m_context_t * contextP,
         lwm2m_watcher_t * targetP = NULL;
 
         if (observedP->watcherList->lastMid == mid
-         && lwm2m_session_is_equal(observedP->watcherList->server->sessionH, fromSessionH, contextP->userData))
+         && lwm2m_session_is_equal(observedP->watcherList->peer->sessionH, fromSessionH, contextP->userData))
         {
             targetP = observedP->watcherList;
             observedP->watcherList = observedP->watcherList->next;
@@ -258,7 +259,7 @@ void observe_cancel(lwm2m_context_t * contextP,
             parentP = observedP->watcherList;
             while (parentP->next != NULL
                 && (parentP->next->lastMid != mid
-                 || !lwm2m_session_is_equal(parentP->next->server->sessionH, fromSessionH, contextP->userData)))
+                 || !lwm2m_session_is_equal(parentP->next->peer->sessionH, fromSessionH, contextP->userData)))
             {
                 parentP = parentP->next;
             }
@@ -321,7 +322,7 @@ void observe_clear(lwm2m_context_t * contextP,
 
 uint8_t observe_setParameters(lwm2m_context_t * contextP,
                               lwm2m_uri_t * uriP,
-                              lwm2m_server_t * serverP,
+                              lwm2m_peer_t * serverP,
                               lwm2m_attributes_t * attrP)
 {
     uint8_t result;
@@ -657,7 +658,7 @@ void observe_step(lwm2m_context_t * contextP,
                         if (watcherP->lastTime + (time_t)watcherP->parameters->minPeriod > currentTime)
                         {
                             // Minimum Period did not elapse yet
-                            interval = watcherP->lastTime + watcherP->parameters->minPeriod - currentTime;
+                            interval = watcherP->lastTime + (time_t)watcherP->parameters->minPeriod - currentTime;
                             if (*timeoutP > interval) *timeoutP = interval;
                             notify = false;
                         }
@@ -719,7 +720,7 @@ void observe_step(lwm2m_context_t * contextP,
                     message->mid = watcherP->lastMid;
                     coap_set_header_token(message, watcherP->token, watcherP->tokenLen);
                     coap_set_header_observe(message, watcherP->counter++);
-                    (void)message_send(contextP, message, watcherP->server->sessionH);
+                    (void)message_send(contextP, message, watcherP->peer->sessionH);
                     watcherP->update = false;
                 }
 
@@ -742,7 +743,7 @@ void observe_step(lwm2m_context_t * contextP,
                 if (watcherP->parameters != NULL && (watcherP->parameters->toSet & LWM2M_ATTR_FLAG_MAX_PERIOD) != 0)
                 {
                     // update timers
-                    interval = watcherP->lastTime + watcherP->parameters->maxPeriod - currentTime;
+                    interval = watcherP->lastTime + (time_t)watcherP->parameters->maxPeriod - currentTime;
                     if (*timeoutP > interval) *timeoutP = interval;
                 }
             }

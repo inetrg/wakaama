@@ -131,20 +131,26 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
 #ifdef LWM2M_CLIENT_MODE
     case LWM2M_URI_FLAG_DM:
     {
-        lwm2m_server_t * serverP;
+        lwm2m_peer_t *peer;
 
-        serverP = utils_findServer(contextP, fromSessionH);
-        if (serverP != NULL)
-        {
-            result = dm_handleRequest(contextP, uriP, serverP, message, response);
+        LOG("Checking if request comes from server");
+        peer = utils_findServer(contextP, fromSessionH);
+
+        if (!peer) {
+            LOG("Checking if request comes from client");
+            peer = utils_findClient(contextP, fromSessionH);
+        }
+
+        if (peer) {
+            LOG("Found peer, handling request");
+            result = dm_handleRequest(contextP, uriP, peer, message, response);
         }
 #ifdef LWM2M_BOOTSTRAP
-        else
-        {
-            serverP = utils_findBootstrapServer(contextP, fromSessionH);
-            if (serverP != NULL)
+        else {
+            peer = utils_findBootstrapServer(contextP, fromSessionH);
+            if (peer != NULL)
             {
-                result = bootstrap_handleCommand(contextP, uriP, serverP, message, response);
+                result = bootstrap_handleCommand(contextP, uriP, peer, message, response);
             }
         }
 #endif
@@ -256,20 +262,26 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
             {
 #ifdef LWM2M_CLIENT_MODE
                 // get server
-                lwm2m_server_t * serverP;
-                serverP = utils_findServer(contextP, fromSessionH);
+                lwm2m_peer_t * peer;
+                peer = utils_findServer(contextP, fromSessionH);
 #ifdef LWM2M_BOOTSTRAP
-                if (serverP == NULL)
-                {
-                    serverP = utils_findBootstrapServer(contextP, fromSessionH);
+                if (!peer) {
+                    peer = utils_findBootstrapServer(contextP, fromSessionH);
                 }
 #endif
-                if (serverP == NULL)
-                {
+
+#ifdef LWM2M_CLIENT_C2C
+                if (!peer) {
+                    LOG("Checking if packet corresponds to a client");
+                    /* check if the session corresponds to a client */
+                    peer = utils_findClient(contextP, fromSessionH);
+                }
+#endif
+
+                if (!peer) {
                     coap_error_code = COAP_500_INTERNAL_SERVER_ERROR;
                 }
-                else
-                {
+                else {
                     uint32_t block1_num;
                     uint8_t  block1_more;
                     uint16_t block1_size;
@@ -281,7 +293,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     LOG_ARG("Blockwise: block1 request NUM %u (SZX %u/ SZX Max%u) MORE %u", block1_num, block1_size, REST_MAX_CHUNK_SIZE, block1_more);
 
                     // handle block 1
-                    coap_error_code = coap_block1_handler(&serverP->block1Data, message->mid, message->payload, message->payload_len, block1_size, block1_num, block1_more, &complete_buffer, &complete_buffer_size);
+                    coap_error_code = coap_block1_handler(&peer->block1Data, message->mid, message->payload, message->payload_len, block1_size, block1_num, block1_more, &complete_buffer, &complete_buffer_size);
 
                     // if payload is complete, replace it in the coap message.
                     if (coap_error_code == NO_ERROR)

@@ -116,6 +116,7 @@ void lwm2m_printf(const char * format, ...);
 // secObjInstID: ID of the Securty Object instance to open a connection to
 // userData: parameter to lwm2m_init()
 void * lwm2m_connect_server(uint16_t secObjInstID, void * userData);
+
 // Close a session created by lwm2m_connect_server()
 // sessionH: session handle identifying the peer (opaque to the core)
 // userData: parameter to lwm2m_init()
@@ -168,6 +169,20 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
 #define LWM2M_FIRMWARE_UPDATE_OBJECT_ID     5
 #define LWM2M_LOCATION_OBJECT_ID            6
 #define LWM2M_CONN_STATS_OBJECT_ID          7
+
+/*
+ * Extended Object IDs for client-to-client communication
+ */
+
+/**
+ * @brief LwM2M Client Object ID
+ */
+#define LWM2M_CLIENT_OBJECT_ID                   11000
+
+/**
+ * @brief LwM2M Client Security object ID
+ */
+#define LWM2M_CLIENT_SECURITY_OBJECT_ID          11001
 
 /*
  * Resource IDs for the LWM2M Security Object
@@ -458,9 +473,14 @@ struct _lwm2m_block1_data_
     uint16_t              lastmid;          // mid of the last message received
 };
 
-typedef struct _lwm2m_server_
-{
-    struct _lwm2m_server_ * next;         // matches lwm2m_list_t::next
+typedef enum {
+    LWM2M_PEER_SERVER,
+    LWM2M_PEER_CLIENT
+} lwm2m_peer_type_t;
+
+/* this represents a LwM2M peer, both a server or another client when using Client2Client comm */
+typedef struct _lwm2m_peer_ {
+    struct _lwm2m_peer_ * next;         // matches lwm2m_list_t::next
     uint16_t                secObjInstID; // matches lwm2m_list_t::id
     uint16_t                shortID;      // servers short ID, may be 0 for bootstrap server
     time_t                  lifetime;     // lifetime of the registration in sec or 0 if default value (86400 sec), also used as hold off time for bootstrap servers
@@ -471,8 +491,8 @@ typedef struct _lwm2m_server_
     char *                  location;
     bool                    dirty;
     lwm2m_block1_data_t *   block1Data;   // buffer to handle block1 data, should be replace by a list to support several block1 transfer by server.
-} lwm2m_server_t;
-
+    lwm2m_peer_type_t       type;
+} lwm2m_peer_t;
 
 /*
  * LWM2M result callback
@@ -594,7 +614,7 @@ typedef struct _lwm2m_watcher_
 
     bool active;
     bool update;
-    lwm2m_server_t * server;
+    lwm2m_peer_t *peer;
     lwm2m_attributes_t * parameters;
     lwm2m_media_type_t format;
     uint8_t token[8];
@@ -652,8 +672,9 @@ typedef struct
     char *               endpointName;
     char *               msisdn;
     char *               altPath;
-    lwm2m_server_t *     bootstrapServerList;
-    lwm2m_server_t *     serverList;
+    lwm2m_peer_t *     bootstrapServerList;
+    lwm2m_peer_t *     serverList;
+    lwm2m_peer_t   *     clientList;  /**< list of clients for client-to-client communication */
     lwm2m_object_t *     objectList;
     lwm2m_observed_t *   observedList;
 #endif
@@ -683,6 +704,23 @@ int lwm2m_step(lwm2m_context_t * contextP, time_t * timeoutP);
 void lwm2m_handle_packet(lwm2m_context_t * contextP, uint8_t * buffer, int length, void * fromSessionH);
 
 #ifdef LWM2M_CLIENT_MODE
+#ifdef LWM2M_CLIENT_C2C
+/**
+ * @brief It should attempt to start a connection with another client.
+ *
+ * @param[in] sec_obj_inst_id   ID of the Client Security Object instance to open a connection to
+ * @param[in] user_data         Parameter passed to lwm2m_init
+ * @return    A session handle that MUST uniquely identify a peer.
+ * @retval    NULL on error
+ */
+void *lwm2m_connect_client(uint16_t sec_obj_inst_id, void *user_data);
+void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
+                              uint16_t client_sec_instance_id);
+
+int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
+                   lwm2m_result_callback_t cb, void *user_data);
+#endif
+
 // configure the client side with the Endpoint Name, binding, MSISDN (can be nil), alternative path
 // for objects (can be nil) and a list of objects.
 // LWM2M Security Object (ID 0) must be present with either a bootstrap server or a LWM2M server and

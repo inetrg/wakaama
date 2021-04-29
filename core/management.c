@@ -159,7 +159,7 @@ static int prv_readAttributes(multi_option_t * query,
     return 0;
 }
 
-bool prv_access_guard(lwm2m_context_t *contextP, lwm2m_server_t *serverP, lwm2m_uri_t *uriP,
+bool prv_access_guard(lwm2m_context_t *contextP, lwm2m_peer_t *serverP, lwm2m_uri_t *uriP,
                       coap_packet_t *msg)
 {
     (void) msg;
@@ -210,14 +210,14 @@ bool prv_access_guard(lwm2m_context_t *contextP, lwm2m_server_t *serverP, lwm2m_
 
 uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                          lwm2m_uri_t * uriP,
-                         lwm2m_server_t * serverP,
+                         lwm2m_peer_t * peer,
                          coap_packet_t * message,
                          coap_packet_t * response)
 {
     uint8_t result;
     lwm2m_media_type_t format;
 
-    LOG_ARG("Code: %02X, server status: %s", message->code, STR_STATUS(serverP->status));
+    LOG_ARG("Code: %02X, peer status: %s", message->code, STR_STATUS(peer->status));
     LOG_URI(uriP);
 
     if (IS_OPTION(message, COAP_OPTION_CONTENT_TYPE))
@@ -234,22 +234,22 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
         return COAP_404_NOT_FOUND;
     }
 
-    if (serverP->status != STATE_REGISTERED
-        && serverP->status != STATE_REG_UPDATE_NEEDED
-        && serverP->status != STATE_REG_FULL_UPDATE_NEEDED
-        && serverP->status != STATE_REG_UPDATE_PENDING)
+    if (peer->type != LWM2M_PEER_CLIENT && peer->status != STATE_REGISTERED
+        && peer->status != STATE_REG_UPDATE_NEEDED
+        && peer->status != STATE_REG_FULL_UPDATE_NEEDED
+        && peer->status != STATE_REG_UPDATE_PENDING)
     {
         return COAP_IGNORE;
     }
 
-    if (!prv_access_guard(contextP, serverP, uriP, message)) {
+    // TODO: add access control for clients!
+    if (peer->type != LWM2M_PEER_CLIENT && !prv_access_guard(contextP, peer, uriP, message)) {
         /* you shall not pass */
         LOG("Server not authorized");
         return COAP_401_UNAUTHORIZED;
     }
 
-    switch (message->code)
-    {
+    switch (message->code) {
     case COAP_GET:
         {
             uint8_t * buffer = NULL;
@@ -264,7 +264,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                 result = object_readData(contextP, uriP, &size, &dataP);
                 if (COAP_205_CONTENT == result)
                 {
-                    result = observe_handleRequest(contextP, uriP, serverP, size, dataP, message, response);
+                    result = observe_handleRequest(contextP, uriP, peer, size, dataP, message, response);
                     if (COAP_205_CONTENT == result)
                     {
                         if (IS_OPTION(message, COAP_OPTION_ACCEPT))
@@ -295,7 +295,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                   && message->accept[0] == APPLICATION_LINK_FORMAT)
             {
                 format = LWM2M_CONTENT_LINK;
-                result = object_discover(contextP, uriP, serverP, &buffer, &length);
+                result = object_discover(contextP, uriP, peer, &buffer, &length);
             }
             else
             {
@@ -368,7 +368,7 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
                 }
                 else
                 {
-                    result = observe_setParameters(contextP, uriP, serverP, &attr);
+                    result = observe_setParameters(contextP, uriP, peer, &attr);
                 }
             }
             else if (LWM2M_URI_IS_SET_INSTANCE(uriP))

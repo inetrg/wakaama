@@ -378,7 +378,7 @@ uint8_t object_delete(lwm2m_context_t * contextP,
 
 uint8_t object_discover(lwm2m_context_t * contextP,
                         lwm2m_uri_t * uriP,
-                        lwm2m_server_t * serverP,
+                        lwm2m_peer_t * serverP,
                         uint8_t ** bufferP,
                         size_t * lengthP)
 {
@@ -653,7 +653,7 @@ int object_getRegisterPayload(lwm2m_context_t * contextP,
     return index;
 }
 
-static lwm2m_list_t * prv_findServerInstance(lwm2m_object_t * objectP,
+static lwm2m_list_t * prv_findPeerInstance(lwm2m_object_t * objectP,
                                              uint16_t shortID)
 {
     lwm2m_list_t * instanceP;
@@ -693,17 +693,30 @@ static lwm2m_list_t * prv_findServerInstance(lwm2m_object_t * objectP,
 
 static int prv_getMandatoryInfo(lwm2m_object_t * objectP,
                                 uint16_t instanceID,
-                                lwm2m_server_t * targetP)
+                                lwm2m_peer_t * targetP)
 {
     lwm2m_data_t * dataP;
+    lwm2m_data_t *lifetime = NULL;
+    lwm2m_data_t *binding = NULL;
     int size;
     int64_t value;
 
-    size = 2;
-    dataP = lwm2m_data_new(size);
-    if (dataP == NULL) return -1;
-    dataP[0].id = LWM2M_SERVER_LIFETIME_ID;
-    dataP[1].id = LWM2M_SERVER_BINDING_ID;
+    if (targetP->type != LWM2M_PEER_CLIENT) {
+        size = 2;
+        dataP = lwm2m_data_new(size);
+        if (dataP == NULL) return -1;
+        lifetime = &dataP[0];
+        binding = &dataP[1];
+        lifetime->id = LWM2M_SERVER_LIFETIME_ID;
+        binding->id = LWM2M_SERVER_BINDING_ID;
+    }
+    else {
+        size = 1;
+        dataP = lwm2m_data_new(size);
+        if (dataP == NULL) return -1;
+        binding = &dataP[0];
+        binding->id = LWM2M_SERVER_BINDING_ID;
+    }
 
     if (objectP->readFunc(instanceID, &size, &dataP, objectP) != COAP_205_CONTENT)
     {
@@ -711,15 +724,17 @@ static int prv_getMandatoryInfo(lwm2m_object_t * objectP,
         return -1;
     }
 
-    if (0 == lwm2m_data_decode_int(dataP, &value)
-     || value < 0 || value >0xFFFFFFFF)             // This is an implementation limit
-    {
-        lwm2m_data_free(size, dataP);
-        return -1;
+    if (targetP->type != LWM2M_PEER_CLIENT) {
+        if (0 == lwm2m_data_decode_int(dataP, &value)
+        || value < 0 || value >0xFFFFFFFF)             // This is an implementation limit
+        {
+            lwm2m_data_free(size, dataP);
+            return -1;
+        }
+        targetP->lifetime = value;
     }
-    targetP->lifetime = value;
 
-    targetP->binding = utils_stringToBinding(dataP[1].value.asBuffer.buffer, dataP[1].value.asBuffer.length);
+    targetP->binding = utils_stringToBinding(binding->value.asBuffer.buffer, binding->value.asBuffer.length);
 
     lwm2m_data_free(size, dataP);
 
@@ -764,7 +779,7 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
 
             lwm2m_data_t * dataP;
             int size;
-            lwm2m_server_t * targetP;
+            lwm2m_peer_t * targetP;
             bool isBootstrap;
             int64_t value = 0;
 
@@ -781,12 +796,13 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
                 return -1;
             }
 
-            targetP = (lwm2m_server_t *)lwm2m_malloc(sizeof(lwm2m_server_t));
+            targetP = (lwm2m_peer_t *)lwm2m_malloc(sizeof(lwm2m_peer_t));
             if (targetP == NULL) {
                 lwm2m_data_free(size, dataP);
                 return -1;
             }
-            memset(targetP, 0, sizeof(lwm2m_server_t));
+            memset(targetP, 0, sizeof(lwm2m_peer_t));
+            targetP->type = LWM2M_PEER_SERVER;
             targetP->secObjInstID = securityInstP->id;
 
             if (0 == lwm2m_data_decode_bool(dataP + 0, &isBootstrap))
@@ -823,14 +839,14 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
                 }
                 else
                 {
-                    contextP->bootstrapServerList = (lwm2m_server_t*)LWM2M_LIST_ADD(contextP->bootstrapServerList, targetP);
+                    contextP->bootstrapServerList = (lwm2m_peer_t*)LWM2M_LIST_ADD(contextP->bootstrapServerList, targetP);
                 }
             }
             else
             {
                 lwm2m_list_t * serverInstP;     // instanceID of the server in the LWM2M Server Object
 
-                serverInstP = prv_findServerInstance(serverObjP, targetP->shortID);
+                serverInstP = prv_findPeerInstance(serverObjP, targetP->shortID);
                 if (serverInstP == NULL)
                 {
                     lwm2m_free(targetP);
@@ -850,7 +866,7 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
                     }
                     else
                     {
-                        contextP->serverList = (lwm2m_server_t*)LWM2M_LIST_ADD(contextP->serverList, targetP);
+                        contextP->serverList = (lwm2m_peer_t*)LWM2M_LIST_ADD(contextP->serverList, targetP);
                     }
                 }
             }
@@ -861,6 +877,106 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
 
     return 0;
 }
+
+#ifdef LWM2M_CLIENT_C2C
+int object_getClients(lwm2m_context_t * contextP, bool checkOnly)
+{
+    lwm2m_object_t * objectP;
+    lwm2m_object_t * securityObjP = NULL;
+    lwm2m_object_t * clientObjP = NULL;
+    lwm2m_list_t * securityInstP;   // instanceID of the client in the LWM2M Client Security Object
+
+    LOG("Entering");
+
+    /* find Client and Client Security objects in the object list */
+    for (objectP = contextP->objectList; objectP != NULL; objectP = objectP->next) {
+        if (objectP->objID == LWM2M_CLIENT_SECURITY_OBJECT_ID) {
+            securityObjP = objectP;
+        }
+        else if (objectP->objID == LWM2M_CLIENT_OBJECT_ID) {
+            clientObjP = objectP;
+        }
+    }
+
+    if (!securityObjP) {
+        LOG("No client security objects registered");
+        return -1;
+    }
+
+    /* go over all instances and add them if they are not already in the list */
+    securityInstP = securityObjP->instanceList;
+    while (securityInstP != NULL) {
+        if (!LWM2M_LIST_FIND(contextP->clientList, securityInstP->id)) {
+            /* This client is new. eg. created by last bootstrap */
+            lwm2m_data_t * dataP;
+            int size;
+            lwm2m_peer_t * client;
+            int64_t value = 0;
+
+            /* get the short client ID for the client */
+            size = 1;
+            dataP = lwm2m_data_new(size);
+            if (!dataP) {
+                return -1;
+            }
+            dataP[0].id = LWM2M_SECURITY_SHORT_SERVER_ID;
+
+            if (securityObjP->readFunc(securityInstP->id, &size, &dataP, securityObjP) != COAP_205_CONTENT) {
+                lwm2m_data_free(size, dataP);
+                return -1;
+            }
+
+            /* allocate and prepare the new peer */
+            client = (lwm2m_peer_t *)lwm2m_malloc(sizeof(lwm2m_peer_t));
+            if (!client) {
+                lwm2m_data_free(size, dataP);
+                return -1;
+            }
+
+            memset(client, 0, sizeof(lwm2m_peer_t));
+            LOG_ARG("New client instance added to the list (sec ID: %d)", securityInstP->id);
+            client->secObjInstID = securityInstP->id;
+            client->type = LWM2M_PEER_CLIENT;
+
+            /* validate short ID */
+            if (!lwm2m_data_decode_int(&dataP[0], &value) || value > 0xFFFF) {
+                lwm2m_free(client);
+                lwm2m_data_free(size, dataP);
+                return -1;
+            }
+            client->shortID = value;
+
+            lwm2m_list_t *clientInst;     /* instance of the client in the LWM2M Client Object */
+
+            clientInst = prv_findPeerInstance(clientObjP, client->shortID);
+            if (!clientInst) {
+                LOG_ARG("Could not find Client instance with short ID %d", client->shortID);
+                lwm2m_free(client);
+            }
+            else {
+                if (0 != prv_getMandatoryInfo(clientObjP, clientInst->id, client)) {
+                    lwm2m_free(client);
+                    lwm2m_data_free(size, dataP);
+                    return -1;
+                }
+                client->status = STATE_DEREGISTERED;
+                if (checkOnly) {
+                    lwm2m_free(client);
+                }
+                else {
+                    LOG("Client added to the list");
+                    contextP->clientList = (lwm2m_peer_t*)LWM2M_LIST_ADD(contextP->clientList, client);
+                }
+            }
+
+            lwm2m_data_free(size, dataP);
+        }
+        securityInstP = securityInstP->next;
+    }
+
+    return 0;
+}
+#endif
 
 uint8_t object_createInstance(lwm2m_context_t * contextP,
                                     lwm2m_uri_t * uriP,

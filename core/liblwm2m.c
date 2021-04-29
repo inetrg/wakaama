@@ -77,7 +77,7 @@ lwm2m_context_t * lwm2m_init(void * userData)
 #ifdef LWM2M_CLIENT_MODE
 void lwm2m_deregister(lwm2m_context_t * context)
 {
-    lwm2m_server_t * server = context->serverList;
+    lwm2m_peer_t * server = context->serverList;
 
     LOG("Entering");
     while (NULL != server)
@@ -87,7 +87,7 @@ void lwm2m_deregister(lwm2m_context_t * context)
     }
 }
 
-static void prv_deleteServer(lwm2m_server_t * serverP, void *userData)
+static void prv_deleteServer(lwm2m_peer_t * serverP, void *userData)
 {
     // TODO parse transaction and observation to remove the ones related to this server
     if (serverP->sessionH != NULL)
@@ -106,14 +106,14 @@ static void prv_deleteServerList(lwm2m_context_t * context)
 {
     while (NULL != context->serverList)
     {
-        lwm2m_server_t * server;
+        lwm2m_peer_t * server;
         server = context->serverList;
         context->serverList = server->next;
         prv_deleteServer(server, context->userData);
     }
 }
 
-static void prv_deleteBootstrapServer(lwm2m_server_t * serverP, void *userData)
+static void prv_deleteBootstrapServer(lwm2m_peer_t * serverP, void *userData)
 {
     // TODO should we free location as in prv_deleteServer ?
     // TODO should we parse transaction and observation to remove the ones related to this server ?
@@ -129,7 +129,7 @@ static void prv_deleteBootstrapServerList(lwm2m_context_t * context)
 {
     while (NULL != context->bootstrapServerList)
     {
-        lwm2m_server_t * server;
+        lwm2m_peer_t * server;
         server = context->bootstrapServerList;
         context->bootstrapServerList = server->next;
         prv_deleteBootstrapServer(server, context->userData);
@@ -209,8 +209,8 @@ void lwm2m_close(lwm2m_context_t * contextP)
 #ifdef LWM2M_CLIENT_MODE
 static int prv_refreshServerList(lwm2m_context_t * contextP)
 {
-    lwm2m_server_t * targetP;
-    lwm2m_server_t * nextP;
+    lwm2m_peer_t * targetP;
+    lwm2m_peer_t * nextP;
 
     // Remove all servers marked as dirty
     targetP = contextP->bootstrapServerList;
@@ -222,7 +222,7 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
         if (!targetP->dirty)
         {
             targetP->status = STATE_DEREGISTERED;
-            contextP->bootstrapServerList = (lwm2m_server_t *)LWM2M_LIST_ADD(contextP->bootstrapServerList, targetP);
+            contextP->bootstrapServerList = (lwm2m_peer_t *)LWM2M_LIST_ADD(contextP->bootstrapServerList, targetP);
         }
         else
         {
@@ -239,7 +239,7 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
         if (!targetP->dirty)
         {
             // TODO: Should we revert the status to STATE_DEREGISTERED ?
-            contextP->serverList = (lwm2m_server_t *)LWM2M_LIST_ADD(contextP->serverList, targetP);
+            contextP->serverList = (lwm2m_peer_t *)LWM2M_LIST_ADD(contextP->serverList, targetP);
         }
         else
         {
@@ -250,6 +250,14 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
 
     return object_getServers(contextP, false);
 }
+
+#ifdef LWM2M_CLIENT_C2C
+static int prv_refreshClientList(lwm2m_context_t * contextP)
+{
+    LOG("Refreshing client list");
+    return object_getClients(contextP, false);
+}
+#endif
 
 int lwm2m_configure(lwm2m_context_t * contextP,
                     const char * endpointName,
@@ -386,6 +394,11 @@ next_step:
     switch (contextP->state)
     {
     case STATE_INITIAL:
+
+#ifdef LWM2M_CLIENT_C2C
+        prv_refreshClientList(contextP);
+#endif
+
         if (0 != prv_refreshServerList(contextP)) return COAP_503_SERVICE_UNAVAILABLE;
         if (contextP->serverList != NULL)
         {

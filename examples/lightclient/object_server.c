@@ -143,7 +143,7 @@ static uint8_t prv_server_discover(uint16_t instanceId,
             LWM2M_SERVER_MIN_PERIOD_ID,
             LWM2M_SERVER_MAX_PERIOD_ID,
             LWM2M_SERVER_DISABLE_ID,
-            LWM2M_SERVER_TIMEOUT_ID,
+            lwm2m_peer_tIMEOUT_ID,
             LWM2M_SERVER_STORING_ID,
             LWM2M_SERVER_BINDING_ID,
             LWM2M_SERVER_UPDATE_ID
@@ -169,7 +169,7 @@ static uint8_t prv_server_discover(uint16_t instanceId,
             case LWM2M_SERVER_MIN_PERIOD_ID:
             case LWM2M_SERVER_MAX_PERIOD_ID:
             case LWM2M_SERVER_DISABLE_ID:
-            case LWM2M_SERVER_TIMEOUT_ID:
+            case lwm2m_peer_tIMEOUT_ID:
             case LWM2M_SERVER_STORING_ID:
             case LWM2M_SERVER_BINDING_ID:
             case LWM2M_SERVER_UPDATE_ID:

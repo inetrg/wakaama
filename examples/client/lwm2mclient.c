@@ -307,7 +307,7 @@ static void prv_output_servers(char * buffer,
                                void * user_data)
 {
     lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     targetP = lwm2mH->bootstrapServerList;
 
@@ -610,7 +610,7 @@ static void prv_initiate_bootstrap(char * buffer,
                                    void * user_data)
 {
     lwm2m_context_t * lwm2mH = (lwm2m_context_t *)user_data;
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     // HACK !!!
     lwm2mH->state = STATE_BOOTSTRAP_REQUIRED;

@@ -29,7 +29,7 @@
 #define PRV_QUERY_BUFFER_LENGTH 200
 
 
-static void prv_handleResponse(lwm2m_server_t * bootstrapServer,
+static void prv_handleResponse(lwm2m_peer_t * bootstrapServer,
                                coap_packet_t * message)
 {
     if (COAP_204_CHANGED == message->code)
@@ -47,7 +47,7 @@ static void prv_handleResponse(lwm2m_server_t * bootstrapServer,
 static void prv_handleBootstrapReply(lwm2m_transaction_t * transaction,
                                      void * message)
 {
-    lwm2m_server_t * bootstrapServer = (lwm2m_server_t *)transaction->userData;
+    lwm2m_peer_t * bootstrapServer = (lwm2m_peer_t *)transaction->userData;
     coap_packet_t * coapMessage = (coap_packet_t *)message;
 
     LOG("Entering");
@@ -67,7 +67,7 @@ static void prv_handleBootstrapReply(lwm2m_transaction_t * transaction,
 
 // start a device initiated bootstrap
 static void prv_requestBootstrap(lwm2m_context_t * context,
-                                 lwm2m_server_t * bootstrapServer)
+                                 lwm2m_peer_t * bootstrapServer)
 {
     char query[PRV_QUERY_BUFFER_LENGTH];
     int query_length = 0;
@@ -129,7 +129,7 @@ void bootstrap_step(lwm2m_context_t * contextP,
                     time_t currentTime,
                     time_t * timeoutP)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     LOG("entering");
     targetP = contextP->bootstrapServerList;
@@ -205,7 +205,7 @@ void bootstrap_step(lwm2m_context_t * contextP,
 uint8_t bootstrap_handleFinish(lwm2m_context_t * context,
                                void * fromSessionH)
 {
-    lwm2m_server_t * bootstrapServer;
+    lwm2m_peer_t * bootstrapServer;
 
     LOG("Entering");
     bootstrapServer = utils_findBootstrapServer(context, fromSessionH);
@@ -235,7 +235,7 @@ uint8_t bootstrap_handleFinish(lwm2m_context_t * context,
  */
 void bootstrap_start(lwm2m_context_t * contextP)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     LOG("Entering");
     targetP = contextP->bootstrapServerList;
@@ -257,7 +257,7 @@ void bootstrap_start(lwm2m_context_t * contextP)
  */
 lwm2m_status_t bootstrap_getStatus(lwm2m_context_t * contextP)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
     lwm2m_status_t bs_status;
 
     LOG("Entering");
@@ -294,7 +294,7 @@ lwm2m_status_t bootstrap_getStatus(lwm2m_context_t * contextP)
     return bs_status;
 }
 
-static uint8_t prv_checkServerStatus(lwm2m_server_t * serverP)
+static uint8_t prv_checkServerStatus(lwm2m_peer_t * serverP)
 {
     LOG_ARG("Initial status: %s", STR_STATUS(serverP->status));
 
@@ -332,12 +332,12 @@ static uint8_t prv_checkServerStatus(lwm2m_server_t * serverP)
 static void prv_tagServer(lwm2m_context_t * contextP,
                           uint16_t id)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
-    targetP = (lwm2m_server_t *)LWM2M_LIST_FIND(contextP->bootstrapServerList, id);
+    targetP = (lwm2m_peer_t *)LWM2M_LIST_FIND(contextP->bootstrapServerList, id);
     if (targetP == NULL)
     {
-        targetP = (lwm2m_server_t *)LWM2M_LIST_FIND(contextP->serverList, id);
+        targetP = (lwm2m_peer_t *)LWM2M_LIST_FIND(contextP->serverList, id);
     }
     if (targetP != NULL)
     {
@@ -346,9 +346,9 @@ static void prv_tagServer(lwm2m_context_t * contextP,
 }
 
 static void prv_tagAllServer(lwm2m_context_t * contextP,
-                             lwm2m_server_t * serverP)
+                             lwm2m_peer_t * serverP)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     targetP = contextP->bootstrapServerList;
     while (targetP != NULL)
@@ -369,7 +369,7 @@ static void prv_tagAllServer(lwm2m_context_t * contextP,
 
 uint8_t bootstrap_handleCommand(lwm2m_context_t * contextP,
                                 lwm2m_uri_t * uriP,
-                                lwm2m_server_t * serverP,
+                                lwm2m_peer_t * serverP,
                                 coap_packet_t * message,
                                 coap_packet_t * response)
 {
@@ -514,7 +514,7 @@ uint8_t bootstrap_handleCommand(lwm2m_context_t * contextP,
 uint8_t bootstrap_handleDeleteAll(lwm2m_context_t * contextP,
                                   void * fromSessionH)
 {
-    lwm2m_server_t * serverP;
+    lwm2m_peer_t * serverP;
     uint8_t result;
     lwm2m_object_t * objectP;
 

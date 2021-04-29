@@ -77,7 +77,7 @@ static uint8_t prv_get_value(lwm2m_data_t * dataP,
     case LWM2M_SERVER_DISABLE_ID:
         return COAP_405_METHOD_NOT_ALLOWED;
 
-    case LWM2M_SERVER_TIMEOUT_ID:
+    case lwm2m_peer_tIMEOUT_ID:
         lwm2m_data_encode_int(targetP->disableTimeout, dataP);
         return COAP_205_CONTENT;
 
@@ -117,7 +117,7 @@ static uint8_t prv_server_read(uint16_t instanceId,
             LWM2M_SERVER_LIFETIME_ID,
             LWM2M_SERVER_MIN_PERIOD_ID,
             LWM2M_SERVER_MAX_PERIOD_ID,
-            LWM2M_SERVER_TIMEOUT_ID,
+            lwm2m_peer_tIMEOUT_ID,
             LWM2M_SERVER_STORING_ID,
             LWM2M_SERVER_BINDING_ID
         };
@@ -164,7 +164,7 @@ static uint8_t prv_server_discover(uint16_t instanceId,
             LWM2M_SERVER_MIN_PERIOD_ID,
             LWM2M_SERVER_MAX_PERIOD_ID,
             LWM2M_SERVER_DISABLE_ID,
-            LWM2M_SERVER_TIMEOUT_ID,
+            lwm2m_peer_tIMEOUT_ID,
             LWM2M_SERVER_STORING_ID,
             LWM2M_SERVER_BINDING_ID,
             LWM2M_SERVER_UPDATE_ID
@@ -190,7 +190,7 @@ static uint8_t prv_server_discover(uint16_t instanceId,
             case LWM2M_SERVER_MIN_PERIOD_ID:
             case LWM2M_SERVER_MAX_PERIOD_ID:
             case LWM2M_SERVER_DISABLE_ID:
-            case LWM2M_SERVER_TIMEOUT_ID:
+            case lwm2m_peer_tIMEOUT_ID:
             case LWM2M_SERVER_STORING_ID:
             case LWM2M_SERVER_BINDING_ID:
             case LWM2M_SERVER_UPDATE_ID:
@@ -281,7 +281,7 @@ static uint8_t prv_server_write(uint16_t instanceId,
             result = COAP_405_METHOD_NOT_ALLOWED;
             break;
 
-        case LWM2M_SERVER_TIMEOUT_ID:
+        case lwm2m_peer_tIMEOUT_ID:
             result = prv_set_int_value(dataArray + i, &(targetP->disableTimeout));
             break;
 

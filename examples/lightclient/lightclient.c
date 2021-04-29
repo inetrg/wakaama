@@ -205,7 +205,7 @@ void print_usage(void)
 
 void print_state(lwm2m_context_t * lwm2mH)
 {
-    lwm2m_server_t * targetP;
+    lwm2m_peer_t * targetP;
 
     fprintf(stderr, "State: ");
     switch(lwm2mH->state)
