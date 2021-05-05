@@ -280,6 +280,9 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly);
 
 #ifdef LWM2M_CLIENT_C2C
 int object_getClients(lwm2m_context_t *contextP, bool checkOnly);
+
+bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_packet_t *message,
+                             coap_packet_t * response);
 #endif
 
 uint8_t object_createInstance(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_data_t * dataP);

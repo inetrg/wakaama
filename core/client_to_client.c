@@ -24,6 +24,29 @@ static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t 
  */
 static void _result_callback(lwm2m_transaction_t *transaction, void *message);
 
+/**
+ * @brief   Callback for observe client to client requests.
+ */
+static void _observe_callback(lwm2m_transaction_t *transaction, void *message);
+
+/**
+ * @brief   Check for an existing observation that matches the URI in a given peer.
+ *
+ * @return Observation that matches the URI
+ * @retval NULL if no observation is found
+ */
+static lwm2m_peer_observation_t *_find_peer_observation(lwm2m_peer_t *peer, lwm2m_uri_t *uri);
+
+typedef struct {
+    uint16_t                sec_inst_id;
+    uint16_t                id;
+    lwm2m_uri_t             uri;
+    lwm2m_result_callback_t callback;
+    void *                  user_data;
+    lwm2m_context_t *       context;
+} c2c_observation_data_t;
+
+
 // #ifdef LWM2M_CLIENT_C2C
 
 void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
@@ -60,6 +83,161 @@ int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lw
     }
 
     return _request(context, client, uri, COAP_GET, LWM2M_CONTENT_TLV, NULL, 0, cb, user_data);
+}
+
+int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
+                      lwm2m_result_callback_t cb, void *user_data)
+{
+    lwm2m_peer_t *client = NULL;
+    lwm2m_peer_observation_t *obs = NULL;
+    c2c_observation_data_t *obs_data = NULL;
+    lwm2m_transaction_t *transaction = NULL;
+    uint8_t token[4];
+
+    LOG_ARG("Observing resource in client %d", client_sec_instance_id);
+    LOG_URI(uri);
+
+    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, client_sec_instance_id);
+    if (!client) {
+        LOG("No client found");
+        return COAP_404_NOT_FOUND;
+    }
+
+    /* check if there is already a connection to the client */
+    if (!client->sessionH) {
+        LOG("Attempting client connection");
+        client->sessionH = lwm2m_connect_client(client->secObjInstID, user_data);
+    }
+
+    if (!client->sessionH) {
+        return COAP_404_NOT_FOUND;
+    }
+
+    obs_data = (c2c_observation_data_t *)lwm2m_malloc(sizeof(c2c_observation_data_t));
+    if (!obs_data) {
+        LOG("Could not instantiate the observation data structure");
+        return COAP_500_INTERNAL_SERVER_ERROR;
+    }
+    memset(obs_data, 0, sizeof(c2c_observation_data_t));
+
+    obs_data->id = ++client->observationId;
+
+    /* observationId may overflow. ensure new ID is not already present */
+    if(LWM2M_LIST_FIND(client->observationList, obs_data->id)) {
+        LOG("Can't get available observation ID. Request failed.\n");
+        lwm2m_free(obs_data);
+        return COAP_500_INTERNAL_SERVER_ERROR;
+    }
+
+    memcpy(&obs_data->uri, uri, sizeof(lwm2m_uri_t));
+    obs_data->id = client->secObjInstID;
+    obs_data->callback = cb;
+    obs_data->user_data = user_data;
+    obs_data->context = context;
+
+    token[0] = client->secObjInstID >> 8;
+    token[1] = client->secObjInstID & 0xFF;
+    token[2] = obs_data->id >> 8;
+    token[3] = obs_data->id & 0xFF;
+
+    /* TODO: alternate path? */
+    transaction = transaction_new(client->sessionH, COAP_GET, NULL, uri, context->nextMID++, 4,
+                                  token);
+    if (!transaction) {
+        LOG("Could not create a new transaction");
+        lwm2m_free(obs_data);
+        return COAP_500_INTERNAL_SERVER_ERROR;
+    }
+
+    coap_set_header_observe(transaction->message, 0);
+    coap_set_header_accept(transaction->message, LWM2M_CONTENT_TLV);
+
+    transaction->callback = _observe_callback;
+    transaction->userData = obs_data;
+
+    context->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(context->transactionList,
+                                                                     transaction);
+
+    obs = _find_peer_observation(client, uri);
+    if (obs) {
+        obs->status = STATE_REG_PENDING;
+    }
+
+    int res = transaction_send(context, transaction);
+    if (res != 0)     {
+        LOG("transaction_send failed!");
+        lwm2m_free(obs_data);
+    }
+    return res;
+}
+
+bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_packet_t *message,
+                             coap_packet_t * response)
+{
+    const uint8_t *token;
+    int token_len;
+    uint16_t client_id;
+    uint16_t obs_id;
+    lwm2m_peer_t *client;
+    lwm2m_peer_observation_t *obs;
+    uint32_t count;
+
+    LOG("Entering");
+
+    token_len = coap_get_header_token(message, &token);
+    if (token_len != sizeof(uint32_t)){
+        return false;
+    }
+
+    if (coap_get_header_observe(message, &count) != 1){
+        return false;
+    }
+
+    client_id = (token[0] << 8) | token[1];
+    obs_id = (token[2] << 8) | token[3];
+
+    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, client_id);
+    if (!client) {
+        LOG_ARG("Unknown client id %d", client_id);
+        return false;
+    }
+
+    obs = (lwm2m_peer_observation_t *)LWM2M_LIST_FIND(client->observationList, obs_id);
+    if (!obs) {
+        LOG("Unexpected notification, cancel that"); /* go away */
+        coap_init_message(response, COAP_TYPE_RST, 0, message->mid);
+        message_send(context, response, session);
+        return true;
+    }
+
+    /* reply if confirmation is needed */
+    if (message->type == COAP_TYPE_CON ) {
+        coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
+        message_send(context, response, session);
+    }
+
+    /* call the registered user callback */
+    obs->callback(client_id, &obs->uri, (int)count, utils_convertMediaType(message->content_type),
+                  message->payload, message->payload_len, obs->user_data);
+
+    return true;
+}
+
+static lwm2m_peer_observation_t *_find_peer_observation(lwm2m_peer_t *peer, lwm2m_uri_t *uri)
+{
+    lwm2m_peer_observation_t *obs = peer->observationList;
+
+    while (obs) {
+        if (obs->uri.objectId == uri->objectId && obs->uri.flag == uri->flag &&
+            obs->uri.instanceId == uri->instanceId && obs->uri.resourceId == uri->resourceId)
+        {
+            return obs;
+        }
+
+        obs = obs->next;
+    }
+
+    return obs;
 }
 
 static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t *uri,
@@ -144,45 +322,75 @@ static void _result_callback(lwm2m_transaction_t *transaction, void *message)
     lwm2m_free(data);
 }
 
+static void _observe_callback(lwm2m_transaction_t *transaction, void *message)
+{
+    lwm2m_peer_t *client = NULL;
+    lwm2m_peer_observation_t *obs = NULL;
+    coap_packet_t *packet = (coap_packet_t *)message;
+    c2c_observation_data_t *obs_data = (c2c_observation_data_t *)transaction->userData;
+    lwm2m_uri_t *uri = &obs_data->uri;
+    uint8_t code;
 
-// int lwm2m_get_client_resource(lwm2m_conext_t *context, uint16_t sec_obj_inst_id,
-//                               const lwm2m_uri_t *uri, char *out, size_t out_len)
-// {
-//     (void) uri;
-//     (void) out;
-//     (void) out_len;
+    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(obs_data->context->clientList, obs_data->sec_inst_id);
+    if (!client) {
+        LOG("No client found");
+        obs_data->callback(obs_data->id, uri, COAP_503_SERVICE_UNAVAILABLE, 0, NULL, 0,
+                           obs_data->user_data);
+        goto free_out;
+    }
 
-//     if (!(uri->flag & LWM2M_URI_FLAG_OBJECT_ID) || !(uri->flag & LWM2M_URI_FLAG_INSTANCE_ID) ||
-//         !(uri->flag & LWM2M_URI_FLAG_RESOURCE_ID)) {
-//         DEBUG("[lwm2m_get_client_resource] URI should point to a resource\n");
-//         return -1;
-//     }
+    obs = _find_peer_observation(client, uri);
+    if (obs && obs->status == STATE_DEREG_PENDING) {
+        code = COAP_400_BAD_REQUEST;
+    }
+    else if (!packet) {
+        code = COAP_503_SERVICE_UNAVAILABLE;
+    }
+    else if (packet->code == COAP_205_CONTENT && !IS_OPTION(packet, COAP_OPTION_OBSERVE)) {
+        code = COAP_405_METHOD_NOT_ALLOWED;
+    }
+    else {
+        code = packet->code;
+    }
 
-//     /* check if there is an existing connection to the client */
-//     lwm2m_client_connection_t *conn = client_data->client_conn_list;
+    if (code != COAP_205_CONTENT) {
+        /* if there is no payload, just call the callback */
+        obs_data->callback(client->secObjInstID, uri, code, LWM2M_CONTENT_TEXT, NULL, 0,
+                           obs_data->user_data);
+    }
+    else {
+        if (!obs) {
+            /* this was the first observation */
+            obs = (lwm2m_peer_observation_t *)lwm2m_malloc(sizeof(lwm2m_peer_observation_t));
+            if (!obs) {
+                LOG("Could not allocate new observation");
+                goto free_out;
+            }
+            memset(obs, 0, sizeof(lwm2m_peer_observation_t));
+        }
+        else {
+            obs->client->observationList = (lwm2m_peer_observation_t *)
+                                            LWM2M_LIST_RM(obs->client->observationList, obs->id,
+                                                          NULL);
+            /* TODO: give the user the change to free user data?? */
+        }
 
-//     while (conn) {
-//         if (sec_obj_inst_id == conn->sec_inst_id) {
-//             break;
-//         }
-//         conn = conn->next;
-//     }
+        obs->id = obs_data->id;
+        obs->client = client;
+        obs->callback = obs_data->callback;
+        obs->user_data = obs_data->user_data;
+        obs->status = STATE_REGISTERED;
+        memcpy(&obs->uri, uri, sizeof(lwm2m_uri_t));
 
-//     if (!conn) {
-//         DEBUG("[lwm2m_get_client_resource] no existent connection, creating one\n");
-//         /* create a new connection */
-//         conn = (lwm2m_client_connection_t *)lwm2m_connect_client(sec_obj_inst_id, client_data);
+        obs->client->observationList = (lwm2m_peer_observation_t *)
+                                       LWM2M_LIST_ADD(obs->client->observationList, obs);
+        obs_data->callback(obs_data->sec_inst_id, &obs_data->uri, 0,
+                           utils_convertMediaType(packet->content_type), packet->payload,
+                           packet->payload_len, obs_data->user_data);
+    }
 
-//         /* add new connection (session) */
-//         lwm2m_set_client_session(client_data->lwm2m_ctx, conn, sec_obj_inst_id);
-//     }
-
-//     if (!conn) {
-//         DEBUG("[lwm2m_get_client_resource] could not establish connection to %d\n", sec_obj_inst_id);
-//         return -1;
-//     }
-
-//     return -1;
-// }
+free_out:
+    lwm2m_free(obs_data);
+}
 
 // #endif

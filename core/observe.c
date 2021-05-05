@@ -498,7 +498,7 @@ void observe_step(lwm2m_context_t * contextP,
         size_t length = 0;
         lwm2m_data_t * dataP = NULL;
         int size = 0;
-        double floatValue = 0;
+        //double floatValue = 0;
         int64_t integerValue = 0;
         bool storeValue = false;
         coap_packet_t message[1];
@@ -518,14 +518,14 @@ void observe_step(lwm2m_context_t * contextP,
                 }
                 storeValue = true;
                 break;
-            case LWM2M_TYPE_FLOAT:
-                if (1 != lwm2m_data_decode_float(dataP, &floatValue))
-                {
-                    lwm2m_data_free(size, dataP);
-                    continue;
-                }
-                storeValue = true;
-                break;
+            // case LWM2M_TYPE_FLOAT:
+            //     if (1 != lwm2m_data_decode_float(dataP, &floatValue))
+            //     {
+            //         lwm2m_data_free(size, dataP);
+            //         continue;
+            //     }
+            //     storeValue = true;
+            //     break;
             default:
                 break;
             }
@@ -568,16 +568,16 @@ void observe_step(lwm2m_context_t * contextP,
                                     notify = true;
                                 }
                                 break;
-                            case LWM2M_TYPE_FLOAT:
-                                if ((floatValue < watcherP->parameters->lessThan
-                                  && watcherP->lastValue.asFloat > watcherP->parameters->lessThan)
-                                 || (floatValue > watcherP->parameters->lessThan
-                                  && watcherP->lastValue.asFloat < watcherP->parameters->lessThan))
-                                {
-                                    LOG("Notify on lower threshold crossing");
-                                    notify = true;
-                                }
-                                break;
+                            // case LWM2M_TYPE_FLOAT:
+                            //     if ((floatValue < watcherP->parameters->lessThan
+                            //       && watcherP->lastValue.asFloat > watcherP->parameters->lessThan)
+                            //      || (floatValue > watcherP->parameters->lessThan
+                            //       && watcherP->lastValue.asFloat < watcherP->parameters->lessThan))
+                            //     {
+                            //         LOG("Notify on lower threshold crossing");
+                            //         notify = true;
+                            //     }
+                            //     break;
                             default:
                                 break;
                             }
@@ -598,16 +598,16 @@ void observe_step(lwm2m_context_t * contextP,
                                     notify = true;
                                 }
                                 break;
-                            case LWM2M_TYPE_FLOAT:
-                                if ((floatValue < watcherP->parameters->greaterThan
-                                  && watcherP->lastValue.asFloat > watcherP->parameters->greaterThan)
-                                 || (floatValue > watcherP->parameters->greaterThan
-                                  && watcherP->lastValue.asFloat < watcherP->parameters->greaterThan))
-                                {
-                                    LOG("Notify on lower upper crossing");
-                                    notify = true;
-                                }
-                                break;
+                            // case LWM2M_TYPE_FLOAT:
+                            //     if ((floatValue < watcherP->parameters->greaterThan
+                            //       && watcherP->lastValue.asFloat > watcherP->parameters->greaterThan)
+                            //      || (floatValue > watcherP->parameters->greaterThan
+                            //       && watcherP->lastValue.asFloat < watcherP->parameters->greaterThan))
+                            //     {
+                            //         LOG("Notify on lower upper crossing");
+                            //         notify = true;
+                            //     }
+                            //     break;
                             default:
                                 break;
                             }
@@ -631,19 +631,19 @@ void observe_step(lwm2m_context_t * contextP,
                                 }
                             }
                                 break;
-                            case LWM2M_TYPE_FLOAT:
-                            {
-                                double diff;
+                            // case LWM2M_TYPE_FLOAT:
+                            // {
+                            //     double diff;
 
-                                diff = floatValue - watcherP->lastValue.asFloat;
-                                if ((diff < 0 && (0 - diff) >= watcherP->parameters->step)
-                                 || (diff >= 0 && diff >= watcherP->parameters->step))
-                                {
-                                    LOG("Notify on step condition");
-                                    notify = true;
-                                }
-                            }
-                                break;
+                            //     diff = floatValue - watcherP->lastValue.asFloat;
+                            //     if ((diff < 0 && (0 - diff) >= watcherP->parameters->step)
+                            //      || (diff >= 0 && diff >= watcherP->parameters->step))
+                            //     {
+                            //         LOG("Notify on step condition");
+                            //         notify = true;
+                            //     }
+                            // }
+                            //     break;
                             default:
                                 break;
                             }
@@ -732,9 +732,9 @@ void observe_step(lwm2m_context_t * contextP,
                     case LWM2M_TYPE_INTEGER:
                         watcherP->lastValue.asInteger = integerValue;
                         break;
-                    case LWM2M_TYPE_FLOAT:
-                        watcherP->lastValue.asFloat = floatValue;
-                        break;
+                    // case LWM2M_TYPE_FLOAT:
+                    //     watcherP->lastValue.asFloat = floatValue;
+                    //     break;
                     default:
                         break;
                     }

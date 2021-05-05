@@ -240,6 +240,10 @@ uint8_t object_write(lwm2m_context_t * contextP,
     {
         result = targetP->writeFunc(uriP->instanceId, size, dataP, targetP);
         lwm2m_data_free(size, dataP);
+        /* FIXME: This is triggering a resource update everytime the resource is written successfully */
+        if (COAP_204_CHANGED == result) {
+            lwm2m_resource_value_changed(contextP, uriP);
+        }
     }
 
     LOG_ARG("result: %u.%2u", (result & 0xFF) >> 5, (result & 0x1F));

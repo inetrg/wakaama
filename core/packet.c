@@ -378,6 +378,10 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 {
                     bool done = transaction_handleResponse(contextP, fromSessionH, message, response);
 
+#ifdef LWM2M_CLIENT_C2C
+                    done = lwm2m_c2c_handle_notify(contextP, fromSessionH, message, response);
+#endif
+
 #ifdef LWM2M_SERVER_MODE
                     if (!done && IS_OPTION(message, COAP_OPTION_OBSERVE) &&
                         ((message->code == COAP_204_CHANGED) || (message->code == COAP_205_CONTENT)))

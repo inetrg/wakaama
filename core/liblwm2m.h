@@ -473,6 +473,23 @@ struct _lwm2m_block1_data_
     uint16_t              lastmid;          // mid of the last message received
 };
 
+/*
+ * LWM2M result callback
+ *
+ * When used with an observe, if 'data' is not nil, 'status' holds the observe counter.
+ */
+typedef void (*lwm2m_result_callback_t) (uint16_t clientID, lwm2m_uri_t * uriP, int status, lwm2m_media_type_t format, uint8_t * data, int dataLength, void * userData);
+
+typedef struct _lwm2m_peer_observation_{
+    struct _lwm2m_peer_observation_ * next;  // matches lwm2m_list_t::next
+    uint16_t                     id;    // matches lwm2m_list_t::id
+    struct _lwm2m_peer_ *        client;
+    lwm2m_uri_t                  uri;
+    lwm2m_status_t               status;     // latest user operation
+    lwm2m_result_callback_t      callback;
+    void *                       user_data;
+} lwm2m_peer_observation_t;
+
 typedef enum {
     LWM2M_PEER_SERVER,
     LWM2M_PEER_CLIENT
@@ -492,14 +509,11 @@ typedef struct _lwm2m_peer_ {
     bool                    dirty;
     lwm2m_block1_data_t *   block1Data;   // buffer to handle block1 data, should be replace by a list to support several block1 transfer by server.
     lwm2m_peer_type_t       type;
+#ifdef LWM2M_CLIENT_C2C
+    lwm2m_peer_observation_t * observationList;
+    uint16_t                 observationId;
+#endif
 } lwm2m_peer_t;
-
-/*
- * LWM2M result callback
- *
- * When used with an observe, if 'data' is not nil, 'status' holds the observe counter.
- */
-typedef void (*lwm2m_result_callback_t) (uint16_t clientID, lwm2m_uri_t * uriP, int status, lwm2m_media_type_t format, uint8_t * data, int dataLength, void * userData);
 
 /*
  * LWM2M Observations
@@ -719,6 +733,10 @@ void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
 
 int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
                    lwm2m_result_callback_t cb, void *user_data);
+
+int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
+                      lwm2m_result_callback_t cb, void *user_data);
+
 #endif
 
 // configure the client side with the Endpoint Name, binding, MSISDN (can be nil), alternative path
