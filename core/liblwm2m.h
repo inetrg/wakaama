@@ -473,6 +473,11 @@ struct _lwm2m_block1_data_
     uint16_t              lastmid;          // mid of the last message received
 };
 
+/**
+ * @brief Authorization request callback
+ */
+typedef void (*lwm2m_auth_request_cb_t) (uint16_t short_server_id, uint8_t response_code, void *user_data);
+
 /*
  * LWM2M result callback
  *
@@ -737,6 +742,9 @@ int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lw
 int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
                       lwm2m_result_callback_t cb, void *user_data);
 
+int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
+                       char *host_uri, size_t host_uri_len,
+                       lwm2m_auth_request_cb_t cb, void *user_data);
 #endif
 
 // configure the client side with the Endpoint Name, binding, MSISDN (can be nil), alternative path
