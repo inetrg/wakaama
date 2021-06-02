@@ -175,14 +175,19 @@ bool lwm2m_session_is_equal(void * session1, void * session2, void * userData);
  */
 
 /**
- * @brief LwM2M Client Object ID
- */
-#define LWM2M_CLIENT_OBJECT_ID                   11000
-
-/**
  * @brief LwM2M Client Security object ID
  */
-#define LWM2M_CLIENT_SECURITY_OBJECT_ID          11001
+#define LWM2M_CLIENT_SECURITY_OBJECT_ID          11000
+
+/**
+ * @brief LwM2M Client Object ID
+ */
+#define LWM2M_CLIENT_OBJECT_ID                   11001
+
+/**
+ * @brief LwM2M Client Access Control object ID
+ */
+#define LWM2M_CLIENT_ACL_ID                      11002
 
 /*
  * Resource IDs for the LWM2M Security Object
@@ -344,6 +349,7 @@ typedef enum
     LWM2M_CONTENT_TEXT      = 0,        // Also used as undefined
     LWM2M_CONTENT_LINK      = 40,
     LWM2M_CONTENT_OPAQUE    = 42,
+    LWM2M_CONTENT_CBOR      = 60,
     LWM2M_CONTENT_TLV_OLD   = 1542,     // Keep old value for backward-compatibility
     LWM2M_CONTENT_TLV       = 11542,
     LWM2M_CONTENT_JSON_OLD  = 1543,     // Keep old value for backward-compatibility
@@ -477,6 +483,11 @@ struct _lwm2m_block1_data_
  * @brief Authorization request callback
  */
 typedef void (*lwm2m_auth_request_cb_t) (uint16_t short_server_id, uint8_t response_code, void *user_data);
+
+typedef struct {
+    lwm2m_uri_t uri;
+    uint16_t access;
+} lwm2m_auth_request_t;
 
 /*
  * LWM2M result callback
@@ -743,8 +754,8 @@ int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id,
                       lwm2m_result_callback_t cb, void *user_data);
 
 int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
-                       char *host_uri, size_t host_uri_len,
-                       lwm2m_auth_request_cb_t cb, void *user_data);
+                       char *host_uri, size_t host_uri_len, lwm2m_auth_request_t *requests,
+                       size_t requests_len, lwm2m_auth_request_cb_t cb, void *user_data);
 #endif
 
 // configure the client side with the Endpoint Name, binding, MSISDN (can be nil), alternative path

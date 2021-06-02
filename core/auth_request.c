@@ -1,4 +1,5 @@
 #include "internals.h"
+#include "cbor.h"
 
 #define AUTH_REQUEST_HOST_PARAM "h="
 
@@ -24,8 +25,8 @@ static void _auth_request_cb(lwm2m_transaction_t *transaction, void *message)
 }
 
 static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
-                         char *host_uri, size_t host_uri_len,
-                         lwm2m_auth_request_cb_t cb, void *user_data)
+                         char *host_uri, size_t host_uri_len,lwm2m_auth_request_t *requests,
+                         size_t request_len, lwm2m_auth_request_cb_t cb, void *user_data)
 {
     lwm2m_transaction_t *transaction;
     int result = COAP_NO_ERROR;
@@ -38,12 +39,55 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
         goto out;
     }
 
+    size_t cbor_buf_len = 6 * request_len + 1;
+    uint8_t *cbor_buf = lwm2m_malloc(cbor_buf_len); // TODO: check this
+    if (!cbor_buf) {
+        LOG("Could not allocate CBOR buffer");
+        goto out;
+    }
+
+    CborEncoder encoder;
+    CborEncoder map_encoder;
+    cbor_encoder_init(&encoder, cbor_buf, cbor_buf_len, 0);
+    cbor_encoder_create_map(&encoder, &map_encoder, request_len);
+
+    for (unsigned i = 0; i < request_len; i++) {
+        CborEncoder array_encoder;
+        size_t array_size = 0;
+
+        if (requests[i].uri.flag & LWM2M_URI_FLAG_OBJECT_ID) {
+            array_size++;
+        }
+
+        if (requests[i].uri.flag & LWM2M_URI_FLAG_INSTANCE_ID) {
+            array_size++;
+        }
+
+        cbor_encoder_create_array(&map_encoder, &array_encoder, array_size);
+
+        if (requests[i].uri.flag & LWM2M_URI_FLAG_OBJECT_ID) {
+            cbor_encode_uint(&array_encoder, requests[i].uri.objectId);
+        }
+
+        if (requests[i].uri.flag & LWM2M_URI_FLAG_INSTANCE_ID) {
+            cbor_encode_uint(&array_encoder, requests[i].uri.instanceId);
+        }
+
+        cbor_encoder_close_container(&map_encoder, &array_encoder);
+
+        cbor_encode_uint(&map_encoder, requests[i].access);
+    }
+
+    cbor_encoder_close_container(&encoder, &map_encoder);
+
+    LOG_ARG("Needed %d more bytes", cbor_encoder_get_extra_bytes_needed(&encoder));
+
     transaction = transaction_new(server->sessionH, COAP_POST, NULL, NULL, context->nextMID++,
                                   4, NULL);
     if (!transaction) {
         LOG("Could not allocate new transaction");
         result = COAP_500_INTERNAL_SERVER_ERROR;
-        goto out;
+        goto free_cbor_out;
     }
 
     query_len += strlen(QUERY_STARTER);
@@ -67,12 +111,14 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
 
     coap_set_header_uri_path(transaction->message, "/"URI_AUTH_REQUEST_SEGMENT);
     coap_set_header_uri_query(transaction->message, query);
+    coap_set_header_content_type(transaction->message, LWM2M_CONTENT_CBOR);
+    coap_set_payload(transaction->message, cbor_buf, (size_t)cbor_encoder_get_buffer_size(&encoder, cbor_buf));
 
     auth_request_data_t *data = lwm2m_malloc(sizeof(auth_request_data_t));
     if (!data) {
         LOG("Could not allocate new data");
         result = COAP_500_INTERNAL_SERVER_ERROR;
-        goto free_query_transaction_out;
+        goto free_query_transaction_cbor_out;
     }
     memset(data, 0, sizeof(auth_request_data_t));
 
@@ -94,18 +140,20 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
 
 free_out:
     lwm2m_free(data);
-free_query_transaction_out:
+free_query_transaction_cbor_out:
     lwm2m_free(query);
 free_transaction_out:
     lwm2m_free(transaction);
+free_cbor_out:
+    lwm2m_free(cbor_buf);
 out:
     return result;
 }
 
 int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
-                       char *host_uri, size_t host_uri_len,
-                       lwm2m_auth_request_cb_t cb, void *user_data) {
-
+                       char *host_uri, size_t host_uri_len, lwm2m_auth_request_t *requests,
+                       size_t requests_len, lwm2m_auth_request_cb_t cb, void *user_data)
+{
     lwm2m_peer_t *server;
 
     LOG("Attempting an authorization request");
@@ -130,5 +178,6 @@ int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
     }
 
     // found the server, trigger the request
-    return _auth_request(context, server, host_uri, host_uri_len, cb, user_data);
+    return _auth_request(context, server, host_uri, host_uri_len, requests, requests_len, cb,
+                         user_data);
 }
