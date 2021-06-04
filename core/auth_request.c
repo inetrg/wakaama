@@ -1,11 +1,11 @@
 #include "internals.h"
 #include "cbor.h"
 
-#define AUTH_REQUEST_HOST_PARAM "h="
+#define AUTH_REQUEST_HOST_PARAM "ep="
 
 typedef struct {
     lwm2m_peer_t *server;
-    char uri[64];
+    char ep[64];
     lwm2m_auth_request_cb_t cb;
     void *user_data;
     lwm2m_context_t *context;
@@ -25,7 +25,7 @@ static void _auth_request_cb(lwm2m_transaction_t *transaction, void *message)
 }
 
 static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
-                         char *host_uri, size_t host_uri_len,lwm2m_auth_request_t *requests,
+                         char *host_ep, size_t host_ep_len,lwm2m_auth_request_t *requests,
                          size_t request_len, lwm2m_auth_request_cb_t cb, void *user_data)
 {
     lwm2m_transaction_t *transaction;
@@ -33,7 +33,7 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
     char *query;
     int query_len = 0;
 
-    if (host_uri_len > 64) {
+    if (host_ep_len > 64) {
         LOG("URI too long");
         result = COAP_400_BAD_REQUEST;
         goto out;
@@ -92,7 +92,7 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
 
     query_len += strlen(QUERY_STARTER);
     query_len += strlen(AUTH_REQUEST_HOST_PARAM);
-    query_len += host_uri_len;
+    query_len += host_ep_len;
 
     query = lwm2m_malloc(query_len);
     if (!query) {
@@ -106,8 +106,8 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
     query_len += strlen(QUERY_STARTER);
     strcpy(&query[query_len], AUTH_REQUEST_HOST_PARAM);
     query_len += strlen(AUTH_REQUEST_HOST_PARAM);
-    strcpy(&query[query_len], host_uri);
-    query_len += host_uri_len;
+    strcpy(&query[query_len], host_ep);
+    query_len += host_ep_len;
 
     coap_set_header_uri_path(transaction->message, "/"URI_AUTH_REQUEST_SEGMENT);
     coap_set_header_uri_query(transaction->message, query);
@@ -126,7 +126,7 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
     data->context = context;
     data->server = server;
     data->user_data = user_data;
-    memcpy(data->uri, host_uri, host_uri_len);
+    memcpy(data->ep, host_ep, host_ep_len);
 
     transaction->callback = _auth_request_cb;
     transaction->userData = data;
@@ -151,7 +151,7 @@ out:
 }
 
 int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
-                       char *host_uri, size_t host_uri_len, lwm2m_auth_request_t *requests,
+                       char *host_ep, size_t host_ep_len, lwm2m_auth_request_t *requests,
                        size_t requests_len, lwm2m_auth_request_cb_t cb, void *user_data)
 {
     lwm2m_peer_t *server;
@@ -178,6 +178,6 @@ int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
     }
 
     // found the server, trigger the request
-    return _auth_request(context, server, host_uri, host_uri_len, requests, requests_len, cb,
+    return _auth_request(context, server, host_ep, host_ep_len, requests, requests_len, cb,
                          user_data);
 }
