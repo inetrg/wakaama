@@ -162,13 +162,24 @@ static int prv_readAttributes(multi_option_t * query,
 bool prv_access_guard(lwm2m_context_t *contextP, lwm2m_peer_t *serverP, lwm2m_uri_t *uriP,
                       coap_packet_t *msg)
 {
-    (void) msg;
-    int access = lwm2m_get_access(serverP->shortID, uriP, contextP->userData);
-    LOG_ARG("Server has access %i to the resource", access);
+    if (serverP->type == LWM2M_PEER_CLIENT && !IS_ACTIVE(CONFIG_LWM2M_CLIENT_CHECK_ACCESS_RIGHTS)) {
+        LOG("Ignoring specified access rights for client");
+        return true;
+    }
 
-    // FIXME: ! for now, when no access information is specified, we allow to pass
+    int access = -1;
+    if (serverP->type == LWM2M_PEER_SERVER) {
+        access = lwm2m_get_access(serverP->shortID, uriP, contextP->userData);
+    }
+    else if (IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)) {
+        access = lwm2m_get_client_access(serverP->shortID, uriP, contextP->userData);
+    }
+
+    LOG_ARG("Peer has access %i to the resource", access);
+
     if (access < 0) {
-        LOG_ARG("No access information initialized!", access);
+        LOG("No access information initialized!");
+        return false;
     }
 
     switch (msg->code)
@@ -242,10 +253,10 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
         return COAP_IGNORE;
     }
 
-    // TODO: add access control for clients!
-    if (peer->type != LWM2M_PEER_CLIENT && !prv_access_guard(contextP, peer, uriP, message)) {
+    if (IS_ACTIVE(CONFIG_LWM2M_CHECK_ACCESS_RIGHTS) && !prv_access_guard(contextP, peer, uriP, message)) {
         /* you shall not pass */
         LOG("Server not authorized");
+        lwm2m_build_server_hint_response(contextP, uriP, response);
         return COAP_401_UNAUTHORIZED;
     }
 

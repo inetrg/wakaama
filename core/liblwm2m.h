@@ -801,6 +801,18 @@ void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP
 int lwm2m_get_access(uint16_t server_id, lwm2m_uri_t *uri, void *user_data);
 
 /**
+ * @brief   Returns the access of a client with short ID @p client_id to a resource in @p uri.
+ *
+ * @param[in] client_id     Short ID of the client.
+ * @param[in] uri           URI of the resource to check access of.
+ * @param[in] user_data     User data provided in @ref lwm2m_init
+ *
+ * @return Access encoded according the Access Control object lists.
+ * @retval -1 if no access information is available for the given resource
+ */
+int lwm2m_get_client_access(uint16_t client_id, lwm2m_uri_t *uri, void *user_data);
+
+/**
  * @brief   Returns the short server ID of the server that is the owner of the resource in @p uri
  *
  * @param[in] uri           URI of the resource to get owner of
