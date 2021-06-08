@@ -242,3 +242,68 @@ void lwm2m_build_server_hint_response(lwm2m_context_t *context, const lwm2m_uri_
     coap_set_payload(response, cbor_buf, (size_t)cbor_encoder_get_buffer_size(&encoder, cbor_buf));
 }
 
+int lwm2m_get_unknown_conn_response(lwm2m_context_t *context, uint8_t *in, int in_len,
+                                    uint8_t *out, int out_len)
+{
+    coap_packet_t message;
+    coap_packet_t response;
+    int result = -1;
+
+    const coap_status_t coap_code = coap_parse_message(&message, in, in_len);
+
+    if (coap_code != NO_ERROR) {
+        LOG("Could not parse CoAP message");
+        goto out;
+    }
+
+    if (message.code != COAP_GET && message.code != COAP_POST && message.code != COAP_PUT &&
+        message.code != COAP_DELETE) {
+        LOG_ARG("Ignoring unexpected response, code (%d)", message.code);
+        goto out;
+    }
+
+    lwm2m_uri_t *uri = uri_decode(context->altPath, message.uri_path);
+    if (!uri) {
+        LOG("Could not parse URI");
+        goto out;
+    }
+
+    /* prepare unauthorized response */
+    if (message.type == COAP_TYPE_CON) {
+        /* Reliable CON requests are answered with an ACK */
+        coap_init_message(&response, COAP_TYPE_ACK, COAP_401_UNAUTHORIZED, message.mid);
+    }
+    else {
+        /* Unreliable NON requests are answered with a NON */
+        coap_init_message(&response, COAP_TYPE_NON, COAP_401_UNAUTHORIZED, context->nextMID++);
+    }
+
+    /* find owner server for the requested resource */
+    LOG("Finding owner");
+    LOG_URI(uri);
+    lwm2m_build_server_hint_response(context, uri, &response);
+
+    /* mirror received token */
+    if (message.token_len) {
+        coap_set_header_token(&response, message.token, message.token_len);
+    }
+
+    int len = coap_serialize_get_size(&response);
+    if (!len || len > out_len) {
+        LOG_ARG("Response needs %d bytes, output buffer is %d bytes", len, out_len);
+        goto free_out;
+    }
+
+    result = coap_serialize_message(&response, out);
+
+    if (response.payload) {
+        lwm2m_free(response.payload);
+    }
+
+free_out:
+    coap_free_header(&message);
+    coap_free_header(&response);
+    lwm2m_free(uri);
+out:
+    return result;
+}

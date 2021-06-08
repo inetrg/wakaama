@@ -756,6 +756,21 @@ int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id,
 int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
                        char *host_uri, size_t host_uri_len, lwm2m_auth_request_t *requests,
                        size_t requests_len, lwm2m_auth_request_cb_t cb, void *user_data);
+
+/**
+ * @brief This should be called to produce potential responses to requests made by unknown
+ *        connections.
+ *
+ * @param[in]  context      LwM2M Context
+ * @param[in]  in           Buffer with the incoming request
+ * @param[in]  in_len       Length of @p in
+ * @param[out] out          Buffer to write the response to
+ * @param[in]  out_len      Size available in @p out
+ *
+ * @return Number of bytes of the response. On error the value is <= 0.
+ */
+int lwm2m_get_unknown_conn_response(lwm2m_context_t *context, uint8_t *in, int in_len, uint8_t *out, int out_len);
+
 #endif
 
 // configure the client side with the Endpoint Name, binding, MSISDN (can be nil), alternative path
@@ -784,6 +799,17 @@ void lwm2m_resource_value_changed(lwm2m_context_t * contextP, lwm2m_uri_t * uriP
  * @retval -1 if no access information is available for the given resource
  */
 int lwm2m_get_access(uint16_t server_id, lwm2m_uri_t *uri, void *user_data);
+
+/**
+ * @brief   Returns the short server ID of the server that is the owner of the resource in @p uri
+ *
+ * @param[in] uri           URI of the resource to get owner of
+ * @param[in] user_data     User data provided in @ref lwm2m_init
+ *
+ * @return Short Server ID of the server that owns the resource.
+ * @retval -1 if no server is specified
+ */
+int lwm2m_get_owner(const lwm2m_uri_t *uri, void *user_data);
 
 #endif
 
