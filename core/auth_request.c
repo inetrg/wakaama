@@ -181,3 +181,64 @@ int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
     return _auth_request(context, server, host_ep, host_ep_len, requests, requests_len, cb,
                          user_data);
 }
+
+void lwm2m_build_server_hint_response(lwm2m_context_t *context, const lwm2m_uri_t *uri,
+                                      coap_packet_t *response)
+{
+    int owner_id = lwm2m_get_owner(uri, context->userData);
+
+    if (owner_id < 0) {
+        LOG("No owner defined for requested resource, using a default one");
+        /* use a default server ID even when the owner or resource is not defined */
+        owner_id = context->serverList->shortID;
+    }
+
+    uint16_t owner_security_instance_id = 0;
+    lwm2m_peer_t *peer = context->serverList;
+    while (peer) {
+        if (peer->shortID == owner_id) {
+            owner_security_instance_id = peer->secObjInstID;
+            break;
+        }
+        peer = peer->next;
+    }
+
+    if (!peer) {
+        LOG_ARG("Can't find server with short ID %d", owner_id);
+    }
+
+    lwm2m_uri_t query_uri = {
+        .objectId = LWM2M_SECURITY_OBJECT_ID,
+        .instanceId = owner_security_instance_id,
+        .resourceId = LWM2M_SECURITY_URI_ID,
+        .flag = LWM2M_URI_FLAG_OBJECT_ID | LWM2M_URI_FLAG_INSTANCE_ID | LWM2M_URI_FLAG_RESOURCE_ID
+    };
+
+    int size = 0;
+    lwm2m_data_t *data = NULL;
+    int res = object_readData(context, &query_uri, &size, &data);
+
+    if (res != COAP_205_CONTENT) {
+        lwm2m_data_free(size, data);
+        return;
+    }
+
+    size_t cbor_buf_len = 4 + data->value.asBuffer.length;
+    uint8_t *cbor_buf = lwm2m_malloc(cbor_buf_len); // TODO: check this
+    if (!cbor_buf) {
+        LOG("Could not allocate CBOR buffer");
+        return;
+    }
+
+    CborEncoder encoder;
+    CborEncoder map_encoder;
+    cbor_encoder_init(&encoder, cbor_buf, cbor_buf_len, 0);
+    cbor_encoder_create_map(&encoder, &map_encoder, 1);
+    cbor_encode_uint(&map_encoder, 1);
+    cbor_encode_text_string(&map_encoder, (char *)data->value.asBuffer.buffer, data->value.asBuffer.length);
+    cbor_encoder_close_container(&encoder, &map_encoder);
+
+    coap_set_header_content_type(response, LWM2M_CONTENT_CBOR);
+    coap_set_payload(response, cbor_buf, (size_t)cbor_encoder_get_buffer_size(&encoder, cbor_buf));
+}
+

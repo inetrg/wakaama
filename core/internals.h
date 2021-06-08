@@ -285,6 +285,9 @@ int object_getClients(lwm2m_context_t *contextP, bool checkOnly);
 
 bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_packet_t *message,
                              coap_packet_t * response);
+
+void lwm2m_build_server_hint_response(lwm2m_context_t *context, const lwm2m_uri_t *uri,
+                                      coap_packet_t *response);
 #endif
 
 uint8_t object_createInstance(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_data_t * dataP);
