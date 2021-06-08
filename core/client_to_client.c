@@ -245,12 +245,13 @@ static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t 
                     size_t payload_len, lwm2m_result_callback_t cb, void *user_data)
 {
     LOG_ARG("Making a %d request", method);
-
+    bool first_request = false;
 
     /* check if there is already a connection to the client */
     if (!client->sessionH) {
         LOG("Attempting client connection");
         client->sessionH = lwm2m_connect_client(client->secObjInstID, user_data);
+        first_request = true;
     }
 
     if (!client->sessionH) {
@@ -264,6 +265,25 @@ static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t 
     if (!transaction) {
         LOG("Could not create transaction");
         return COAP_500_INTERNAL_SERVER_ERROR;
+    }
+
+    char *query = NULL;
+    if (first_request) {
+        /* we must include the endpoint name */
+        int query_len = strlen(QUERY_STARTER);
+        query_len += QUERY_NAME_LEN;
+        query_len += strlen(context->endpointName);
+
+        query = lwm2m_malloc(query_len);
+        if (query) {
+            query_len = 0;
+            strcpy(&query[query_len], QUERY_STARTER);
+            query_len += strlen(QUERY_STARTER);
+            strcpy(&query[query_len], QUERY_NAME);
+            query_len += QUERY_NAME_LEN;
+            strcpy(&query[query_len], context->endpointName);
+            coap_set_header_uri_query(transaction->message, query);
+        }
     }
 
     if (method == COAP_GET) {
@@ -281,6 +301,11 @@ static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t 
         if (!data) {
             LOG("There is a callback but can't allocate a data");
             transaction_free(transaction);
+
+            if (query) {
+                lwm2m_free(query);
+            }
+
             return COAP_500_INTERNAL_SERVER_ERROR;
         }
 
@@ -295,7 +320,15 @@ static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t 
 
     context->transactionList = (lwm2m_transaction_t *)LWM2M_LIST_ADD(context->transactionList,
                                                                      transaction);
-    return transaction_send(context, transaction);
+
+    int result = transaction_send(context, transaction);
+    if (result != 0) {
+        if (query) {
+            lwm2m_free(query);
+        }
+    }
+
+    return result;
 }
 
 static void _result_callback(lwm2m_transaction_t *transaction, void *message)
