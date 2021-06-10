@@ -92,7 +92,7 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
 
     query_len += strlen(QUERY_STARTER);
     query_len += strlen(AUTH_REQUEST_HOST_PARAM);
-    query_len += host_ep_len;
+    query_len += host_ep_len + 1;
 
     query = lwm2m_malloc(query_len);
     if (!query) {
@@ -100,13 +100,14 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
         result = COAP_500_INTERNAL_SERVER_ERROR;
         goto free_transaction_out;
     }
+    memset(query, 0, query_len);
 
     query_len = 0;
     strcpy(&query[query_len], QUERY_STARTER);
     query_len += strlen(QUERY_STARTER);
     strcpy(&query[query_len], AUTH_REQUEST_HOST_PARAM);
     query_len += strlen(AUTH_REQUEST_HOST_PARAM);
-    strcpy(&query[query_len], host_ep);
+    memcpy(&query[query_len], host_ep, host_ep_len);
     query_len += host_ep_len;
 
     coap_set_header_uri_path(transaction->message, "/"URI_AUTH_REQUEST_SEGMENT);
@@ -171,6 +172,7 @@ int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
         if (server->shortID == short_server_id) {
             break;
         }
+        server = server->next;
     }
 
     if (!server) {
