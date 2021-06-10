@@ -13,12 +13,17 @@ typedef struct {
 
 static void _auth_request_cb(lwm2m_transaction_t *transaction, void *message)
 {
-    coap_packet_t * packet = (coap_packet_t *)message;
     auth_request_data_t *data = (auth_request_data_t *)transaction->userData;
+    coap_packet_t * packet = (coap_packet_t *)message;
 
-    LOG_ARG("Authorization request callback: code %d", packet->code);
     if (data->cb) {
-        data->cb(data->server->shortID, packet->code, data->user_data); // TODO: add uri?
+        if (packet) {
+            LOG_ARG("Authorization request callback: code %d", packet->code);
+            data->cb(data->server->shortID, packet->code, data->user_data); // TODO: add uri?
+        }
+        else {
+            data->cb(data->server->shortID, COAP_404_NOT_FOUND, data->user_data); // TODO: add uri?
+        }
     }
 
     lwm2m_free(data);
