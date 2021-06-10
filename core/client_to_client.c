@@ -272,7 +272,7 @@ static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t 
         /* we must include the endpoint name */
         int query_len = strlen(QUERY_STARTER);
         query_len += QUERY_NAME_LEN;
-        query_len += strlen(context->endpointName);
+        query_len += strlen(context->endpointName) + 1;
 
         query = lwm2m_malloc(query_len);
         if (query) {
