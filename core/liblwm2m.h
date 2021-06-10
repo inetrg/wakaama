@@ -755,7 +755,8 @@ int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id,
 
 int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
                        char *host_ep, size_t host_ep_len, lwm2m_auth_request_t *requests,
-                       size_t requests_len, lwm2m_auth_request_cb_t cb, void *user_data);
+                       size_t requests_len, bool credentials, lwm2m_auth_request_cb_t cb,
+                       void *user_data);
 
 /**
  * @brief This should be called to produce potential responses to requests made by unknown

@@ -1,7 +1,11 @@
 #include "internals.h"
 #include "cbor.h"
 
-#define AUTH_REQUEST_HOST_PARAM "ep="
+#define AUTH_REQUEST_EP_PARAM         "ep="
+#define AUTH_REQUEST_EP_PARAM_LEN     3
+
+#define AUTH_REQUEST_CRED_PARAM       "c"
+#define AUTH_REQUEST_CRED_PARAM_LEN   1
 
 typedef struct {
     lwm2m_peer_t *server;
@@ -31,7 +35,8 @@ static void _auth_request_cb(lwm2m_transaction_t *transaction, void *message)
 
 static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
                          char *host_ep, size_t host_ep_len,lwm2m_auth_request_t *requests,
-                         size_t request_len, lwm2m_auth_request_cb_t cb, void *user_data)
+                         size_t request_len, bool credentials, lwm2m_auth_request_cb_t cb,
+                         void *user_data)
 {
     lwm2m_transaction_t *transaction;
     int result = COAP_NO_ERROR;
@@ -95,9 +100,14 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
         goto free_cbor_out;
     }
 
-    query_len += strlen(QUERY_STARTER);
-    query_len += strlen(AUTH_REQUEST_HOST_PARAM);
+    query_len += QUERY_STARTER_LEN;
+    query_len += AUTH_REQUEST_EP_PARAM_LEN;
     query_len += host_ep_len + 1;
+
+    if (credentials) {
+        query_len += QUERY_DELIMITER_LEN;
+        query_len += AUTH_REQUEST_CRED_PARAM_LEN;
+    }
 
     query = lwm2m_malloc(query_len);
     if (!query) {
@@ -109,11 +119,18 @@ static int _auth_request(lwm2m_context_t *context, lwm2m_peer_t *server,
 
     query_len = 0;
     strcpy(&query[query_len], QUERY_STARTER);
-    query_len += strlen(QUERY_STARTER);
-    strcpy(&query[query_len], AUTH_REQUEST_HOST_PARAM);
-    query_len += strlen(AUTH_REQUEST_HOST_PARAM);
+    query_len += QUERY_STARTER_LEN;
+    strcpy(&query[query_len], AUTH_REQUEST_EP_PARAM);
+    query_len += AUTH_REQUEST_EP_PARAM_LEN;
     memcpy(&query[query_len], host_ep, host_ep_len);
     query_len += host_ep_len;
+
+    if (credentials) {
+        strcpy(&query[query_len], QUERY_DELIMITER);
+        query_len += QUERY_DELIMITER_LEN;
+        strcpy(&query[query_len], AUTH_REQUEST_CRED_PARAM);
+        query_len += AUTH_REQUEST_CRED_PARAM_LEN;
+    }
 
     coap_set_header_uri_path(transaction->message, "/"URI_AUTH_REQUEST_SEGMENT);
     coap_set_header_uri_query(transaction->message, query);
@@ -158,7 +175,7 @@ out:
 
 int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
                        char *host_ep, size_t host_ep_len, lwm2m_auth_request_t *requests,
-                       size_t requests_len, lwm2m_auth_request_cb_t cb, void *user_data)
+                       size_t requests_len, bool credentials, lwm2m_auth_request_cb_t cb, void *user_data)
 {
     lwm2m_peer_t *server;
 
@@ -185,8 +202,8 @@ int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
     }
 
     // found the server, trigger the request
-    return _auth_request(context, server, host_ep, host_ep_len, requests, requests_len, cb,
-                         user_data);
+    return _auth_request(context, server, host_ep, host_ep_len, requests, requests_len,
+                         credentials, cb, user_data);
 }
 
 void lwm2m_build_server_hint_response(lwm2m_context_t *context, const lwm2m_uri_t *uri,

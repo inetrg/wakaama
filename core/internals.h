@@ -162,6 +162,7 @@
 #define URI_AUTH_REQUEST_SEGMENT_LEN    2
 
 #define QUERY_STARTER       "?"
+#define QUERY_STARTER_LEN   1
 #define QUERY_NAME          "ep="
 #define QUERY_NAME_LEN      3       // strlen("ep=")
 #define QUERY_SMS           "sms="
@@ -173,6 +174,7 @@
 #define QUERY_BINDING       "b="
 #define QUERY_BINDING_LEN   2
 #define QUERY_DELIMITER     "&"
+#define QUERY_DELIMITER_LEN 1
 
 #define LWM2M_VERSION      "1.0"
 #define LWM2M_VERSION_LEN  3
