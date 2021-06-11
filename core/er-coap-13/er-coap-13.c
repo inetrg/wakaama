@@ -853,17 +853,19 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
 int
 coap_get_query_variable(void *packet, const char *name, const char **output)
 {
-/*
+
   coap_packet_t *const coap_pkt = (coap_packet_t *) packet;
 
   if (IS_OPTION(coap_pkt, COAP_OPTION_URI_QUERY)) {
-    return coap_get_variable(coap_pkt->uri_query, coap_pkt->uri_query_len, name, output);
+    return coap_get_variable(coap_pkt->uri_query->data, coap_pkt->uri_query->len, name, output);
   }
-*/
+  return 0;
+/*
   (void)packet;
   (void)name;
   (void)output;
   return 0;
+*/
 }
 
 int
