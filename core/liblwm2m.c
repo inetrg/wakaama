@@ -257,6 +257,11 @@ static int prv_refreshClientList(lwm2m_context_t * contextP)
     LOG("Refreshing client list");
     return object_getClients(contextP, false);
 }
+
+void lwm2m_refresh_client_list(lwm2m_context_t *context)
+{
+    prv_refreshClientList(context);
+}
 #endif
 
 int lwm2m_configure(lwm2m_context_t * contextP,

@@ -446,4 +446,20 @@ free_out:
     lwm2m_free(obs_data);
 }
 
+int lwm2m_get_request_endpoint(lwm2m_context_t *context, uint8_t *buffer, int length, const char **ep)
+{
+    (void) context;
+    uint8_t coap_error_code = NO_ERROR;
+    coap_packet_t message;
+
+    coap_error_code = coap_parse_message(&message, buffer, (uint16_t)length);
+    if (coap_error_code != NO_ERROR) {
+        *ep = NULL;
+        return -1;
+    }
+
+    return coap_get_query_variable(&message, "ep", ep);
+}
+
+
 // #endif

@@ -751,6 +751,17 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP, uint8_t * buffer, int lengt
  * @retval    NULL on error
  */
 void *lwm2m_connect_client(uint16_t sec_obj_inst_id, void *user_data);
+
+/**
+ * @brief   It should remove a session to a client.
+ *
+ * @param[in] context           LwM2M context.
+ * @param[in] secObjInstID      ID of the Client Security Object instance connection to close
+ */
+void lwm2m_remove_client_session(lwm2m_context_t *context, uint16_t secObjInstID);
+
+int lwm2m_get_request_endpoint(lwm2m_context_t *context, uint8_t *buffer, int length, const char **ep);
+
 void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
                               uint16_t client_sec_instance_id);
 
@@ -764,6 +775,13 @@ int lwm2m_auth_request(lwm2m_context_t *context, uint16_t short_server_id,
                        char *host_ep, size_t host_ep_len, lwm2m_auth_request_t *requests,
                        size_t requests_len, bool credentials, lwm2m_auth_request_cb_t cb,
                        void *user_data);
+
+/**
+ * @brief   Triggers a refresh of the known clients.
+ *
+ * @param[in] context           LwM2M context.
+ */
+void lwm2m_refresh_client_list(lwm2m_context_t *context);
 
 /**
  * @brief This should be called to produce potential responses to requests made by unknown
