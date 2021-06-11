@@ -121,6 +121,13 @@ void * lwm2m_connect_server(uint16_t secObjInstID, void * userData);
 // sessionH: session handle identifying the peer (opaque to the core)
 // userData: parameter to lwm2m_init()
 void lwm2m_close_connection(void * sessionH, void * userData);
+
+#ifdef LWM2M_CLIENT_C2C
+
+void lwm2m_close_client_connection(void * sessionH, void * userData);
+
+#endif /* LWM2M_CLIENT_C2C */
+
 #endif
 // Send data to a peer
 // Returns COAP_NO_ERROR or a COAP_NNN error code

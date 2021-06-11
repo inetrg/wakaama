@@ -68,6 +68,26 @@ void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
     }
 }
 
+void lwm2m_remove_client_session(lwm2m_context_t *context, uint16_t secObjInstID)
+{
+    LOG_ARG("Closing client connection with security ID %d", secObjInstID);
+
+    if (!context) {
+        LOG("No context!");
+        return;
+    }
+
+    lwm2m_peer_t *client;
+    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, secObjInstID);
+    if (client && client->sessionH) {
+        lwm2m_close_client_connection(client->sessionH, context->userData);
+        client->sessionH = NULL;
+    }
+    else {
+        LOG("ERROR: no such a client in peer list");
+    }
+}
+
 int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
                    lwm2m_result_callback_t cb, void *user_data)
 {
