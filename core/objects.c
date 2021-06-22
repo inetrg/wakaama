@@ -885,6 +885,10 @@ int object_getServers(lwm2m_context_t * contextP, bool checkOnly)
 #ifdef LWM2M_CLIENT_C2C
 int object_getClients(lwm2m_context_t * contextP, bool checkOnly)
 {
+    if (!IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)) {
+        return -1;
+    }
+
     lwm2m_object_t * objectP;
     lwm2m_object_t * securityObjP = NULL;
     lwm2m_object_t * clientObjP = NULL;

@@ -256,7 +256,9 @@ uint8_t dm_handleRequest(lwm2m_context_t * contextP,
     if (IS_ACTIVE(CONFIG_LWM2M_CHECK_ACCESS_RIGHTS) && !prv_access_guard(contextP, peer, uriP, message)) {
         /* you shall not pass */
         LOG("Server not authorized");
-        lwm2m_build_server_hint_response(contextP, uriP, response);
+        if (IS_ACTIVE(CONFIG_LwM2M_CLIENT_THIRD_PARTY_AUTH)) {
+            lwm2m_build_server_hint_response(contextP, uriP, response);
+        }
         return COAP_401_UNAUTHORIZED;
     }
 

@@ -37,6 +37,21 @@ static void _observe_callback(lwm2m_transaction_t *transaction, void *message);
  */
 static lwm2m_peer_observation_t *_find_peer_observation(lwm2m_peer_t *peer, lwm2m_uri_t *uri);
 
+lwm2m_peer_t *_find_client(lwm2m_context_t *context, uint16_t sec_instance_id) {
+    (void) context;
+    (void) sec_instance_id;
+#if !IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
+    return NULL;
+#else
+    lwm2m_peer_t *client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, sec_instance_id);
+    if (!client) {
+        LOG("No client found");
+        return NULL;
+    }
+    return client;
+#endif /* CONFIG_LWM2M_CLIENT_C2C */
+}
+
 typedef struct {
     uint16_t                sec_inst_id;
     uint16_t                id;
@@ -46,20 +61,20 @@ typedef struct {
     lwm2m_context_t *       context;
 } c2c_observation_data_t;
 
-
-// #ifdef LWM2M_CLIENT_C2C
-
 void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
                               uint16_t client_sec_instance_id)
 {
+    if (!IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)) {
+        return;
+    }
+
     LOG_ARG("Adding client session for security ID %d", client_sec_instance_id);
 
     if (!contextP || !session) {
         return;
     }
 
-    lwm2m_peer_t *client;
-    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(contextP->clientList, client_sec_instance_id);
+    lwm2m_peer_t *client = _find_client(contextP, client_sec_instance_id);
     if (client) {
         client->sessionH = session;
     }
@@ -70,6 +85,10 @@ void lwm2m_set_client_session(lwm2m_context_t *contextP, void *session,
 
 void lwm2m_remove_client_session(lwm2m_context_t *context, uint16_t secObjInstID)
 {
+    if (!IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)) {
+        return;
+    }
+
     LOG_ARG("Closing client connection with security ID %d", secObjInstID);
 
     if (!context) {
@@ -77,8 +96,7 @@ void lwm2m_remove_client_session(lwm2m_context_t *context, uint16_t secObjInstID
         return;
     }
 
-    lwm2m_peer_t *client;
-    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, secObjInstID);
+    lwm2m_peer_t *client = _find_client(context, secObjInstID);
     if (client && client->sessionH) {
         lwm2m_close_client_connection(client->sessionH, context->userData);
         client->sessionH = NULL;
@@ -91,12 +109,14 @@ void lwm2m_remove_client_session(lwm2m_context_t *context, uint16_t secObjInstID
 int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
                    lwm2m_result_callback_t cb, void *user_data)
 {
-    lwm2m_peer_t *client;
+    if (!IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)) {
+        return COAP_404_NOT_FOUND;
+    }
 
     LOG_ARG("Reading from client %d", client_sec_instance_id);
     LOG_URI(uri);
 
-    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, client_sec_instance_id);
+    lwm2m_peer_t *client =  _find_client(context, client_sec_instance_id);
     if (!client) {
         LOG("No client found");
         return COAP_404_NOT_FOUND;
@@ -108,7 +128,17 @@ int lwm2m_c2c_read(lwm2m_context_t *context, uint16_t client_sec_instance_id, lw
 int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id, lwm2m_uri_t *uri,
                       lwm2m_result_callback_t cb, void *user_data)
 {
-    lwm2m_peer_t *client = NULL;
+    (void) context;
+    (void) client_sec_instance_id;
+    (void) uri;
+    (void) cb;
+    (void) user_data;
+
+#if !IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
+        (void) _observe_callback;
+        (void) _find_peer_observation;
+        return COAP_404_NOT_FOUND;
+#else
     lwm2m_peer_observation_t *obs = NULL;
     c2c_observation_data_t *obs_data = NULL;
     lwm2m_transaction_t *transaction = NULL;
@@ -117,7 +147,7 @@ int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id,
     LOG_ARG("Observing resource in client %d", client_sec_instance_id);
     LOG_URI(uri);
 
-    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, client_sec_instance_id);
+    lwm2m_peer_t *client = _find_client(context, client_sec_instance_id);
     if (!client) {
         LOG("No client found");
         return COAP_404_NOT_FOUND;
@@ -189,16 +219,24 @@ int lwm2m_c2c_observe(lwm2m_context_t *context, uint16_t client_sec_instance_id,
         lwm2m_free(obs_data);
     }
     return res;
+#endif /* CONFIG_LWM2M_CLIENT_C2C */
 }
 
 bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_packet_t *message,
                              coap_packet_t * response)
 {
+    (void) context;
+    (void) session;
+    (void) message;
+    (void) response;
+
+#if !IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
+    return false;
+#else
     const uint8_t *token;
     int token_len;
     uint16_t client_id;
     uint16_t obs_id;
-    lwm2m_peer_t *client;
     lwm2m_peer_observation_t *obs;
     uint32_t count;
 
@@ -216,7 +254,7 @@ bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_pack
     client_id = (token[0] << 8) | token[1];
     obs_id = (token[2] << 8) | token[3];
 
-    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(context->clientList, client_id);
+    lwm2m_peer_t *client = _find_client(context, client_id);
     if (!client) {
         LOG_ARG("Unknown client id %d", client_id);
         return false;
@@ -241,10 +279,16 @@ bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_pack
                   message->payload, message->payload_len, obs->user_data);
 
     return true;
+#endif /* CONFIG_LWM2M_CLIENT_C2C */
 }
 
 static lwm2m_peer_observation_t *_find_peer_observation(lwm2m_peer_t *peer, lwm2m_uri_t *uri)
 {
+    (void) peer;
+    (void) uri;
+#if !IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
+    return NULL;
+#else
     lwm2m_peer_observation_t *obs = peer->observationList;
 
     while (obs) {
@@ -258,6 +302,7 @@ static lwm2m_peer_observation_t *_find_peer_observation(lwm2m_peer_t *peer, lwm2
     }
 
     return obs;
+#endif /* CONFIG_LWM2M_CLIENT_C2C */
 }
 
 static int _request(lwm2m_context_t *context, lwm2m_peer_t *client, lwm2m_uri_t *uri,
@@ -377,14 +422,18 @@ static void _result_callback(lwm2m_transaction_t *transaction, void *message)
 
 static void _observe_callback(lwm2m_transaction_t *transaction, void *message)
 {
-    lwm2m_peer_t *client = NULL;
+    (void) transaction;
+    (void) message;
+#if !IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
+    return;
+#else
     lwm2m_peer_observation_t *obs = NULL;
     coap_packet_t *packet = (coap_packet_t *)message;
     c2c_observation_data_t *obs_data = (c2c_observation_data_t *)transaction->userData;
     lwm2m_uri_t *uri = &obs_data->uri;
     uint8_t code;
 
-    client = (lwm2m_peer_t *)LWM2M_LIST_FIND(obs_data->context->clientList, obs_data->sec_inst_id);
+    lwm2m_peer_t *client = _find_client(obs_data->context, obs_data->sec_inst_id);
     if (!client) {
         LOG("No client found");
         obs_data->callback(obs_data->id, uri, COAP_503_SERVICE_UNAVAILABLE, 0, NULL, 0,
@@ -444,6 +493,7 @@ static void _observe_callback(lwm2m_transaction_t *transaction, void *message)
 
 free_out:
     lwm2m_free(obs_data);
+#endif /* CONFIG_LWM2M_CLIENT_C2C */
 }
 
 int lwm2m_get_request_endpoint(lwm2m_context_t *context, uint8_t *buffer, int length, const char **ep)
@@ -460,6 +510,3 @@ int lwm2m_get_request_endpoint(lwm2m_context_t *context, uint8_t *buffer, int le
 
     return coap_get_query_variable(&message, "ep", ep);
 }
-
-
-// #endif

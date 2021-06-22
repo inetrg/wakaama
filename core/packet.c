@@ -136,7 +136,7 @@ static uint8_t handle_request(lwm2m_context_t * contextP,
         LOG("Checking if request comes from server");
         peer = utils_findServer(contextP, fromSessionH);
 
-        if (!peer) {
+        if (!peer && IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)) {
             LOG("Checking if request comes from client");
             peer = utils_findClient(contextP, fromSessionH);
         }
@@ -270,7 +270,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                 }
 #endif
 
-#ifdef LWM2M_CLIENT_C2C
+#ifdef CONFIG_LWM2M_CLIENT_C2C
                 if (!peer) {
                     LOG("Checking if packet corresponds to a client");
                     /* check if the session corresponds to a client */

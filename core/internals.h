@@ -282,7 +282,6 @@ int object_getRegisterPayloadBufferLength(lwm2m_context_t * contextP);
 int object_getRegisterPayload(lwm2m_context_t * contextP, uint8_t * buffer, size_t length);
 int object_getServers(lwm2m_context_t * contextP, bool checkOnly);
 
-#ifdef LWM2M_CLIENT_C2C
 int object_getClients(lwm2m_context_t *contextP, bool checkOnly);
 
 bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_packet_t *message,
@@ -290,7 +289,6 @@ bool lwm2m_c2c_handle_notify(lwm2m_context_t * context, void *session, coap_pack
 
 void lwm2m_build_server_hint_response(lwm2m_context_t *context, const lwm2m_uri_t *uri,
                                       coap_packet_t *response);
-#endif
 
 uint8_t object_createInstance(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_data_t * dataP);
 uint8_t object_writeInstance(lwm2m_context_t * contextP, lwm2m_uri_t * uriP, lwm2m_data_t * dataP);
@@ -375,9 +373,7 @@ size_t utils_base64Encode(uint8_t * dataP, size_t dataLen, uint8_t * bufferP, si
 #ifdef LWM2M_CLIENT_MODE
 lwm2m_peer_t * utils_findServer(lwm2m_context_t * contextP, void * fromSessionH);
 
-#ifdef LWM2M_CLIENT_C2C
 lwm2m_peer_t * utils_findClient(lwm2m_context_t * contextP, void * fromSessionH);
-#endif
 
 lwm2m_peer_t * utils_findBootstrapServer(lwm2m_context_t * contextP, void * fromSessionH);
 #endif

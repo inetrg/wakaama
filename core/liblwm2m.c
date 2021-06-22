@@ -251,18 +251,21 @@ static int prv_refreshServerList(lwm2m_context_t * contextP)
     return object_getServers(contextP, false);
 }
 
-#ifdef LWM2M_CLIENT_C2C
 static int prv_refreshClientList(lwm2m_context_t * contextP)
 {
+#if IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
     LOG("Refreshing client list");
     return object_getClients(contextP, false);
+#else
+    (void) contextP;
+    return -1;
+#endif
 }
 
 void lwm2m_refresh_client_list(lwm2m_context_t *context)
 {
     prv_refreshClientList(context);
 }
-#endif
 
 int lwm2m_configure(lwm2m_context_t * contextP,
                     const char * endpointName,

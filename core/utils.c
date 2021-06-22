@@ -371,9 +371,9 @@ lwm2m_peer_t *utils_findServer(lwm2m_context_t * contextP,
     return targetP;
 }
 
-#ifdef LWM2M_CLIENT_C2C
 lwm2m_peer_t *utils_findClient(lwm2m_context_t *context, void *fromSessionH)
 {
+#if IS_ACTIVE(CONFIG_LWM2M_CLIENT_C2C)
     lwm2m_peer_t *client = context->clientList;
 
     while (client) {
@@ -384,10 +384,14 @@ lwm2m_peer_t *utils_findClient(lwm2m_context_t *context, void *fromSessionH)
     }
 
     return client;
+#else
+    (void) context;
+    (void) fromSessionH;
+    return NULL;
+#endif /* CONFIG_LwM2M_CLIENT_C2C */
 }
-#endif /* LWM2M_CLIENT_C2C */
 
-#endif
+#endif /* LWM2M_CLIENT_MODE */
 
 lwm2m_peer_t * utils_findBootstrapServer(lwm2m_context_t * contextP,
                                            void * fromSessionH)

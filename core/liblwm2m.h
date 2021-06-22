@@ -122,11 +122,7 @@ void * lwm2m_connect_server(uint16_t secObjInstID, void * userData);
 // userData: parameter to lwm2m_init()
 void lwm2m_close_connection(void * sessionH, void * userData);
 
-#ifdef LWM2M_CLIENT_C2C
-
 void lwm2m_close_client_connection(void * sessionH, void * userData);
-
-#endif /* LWM2M_CLIENT_C2C */
 
 #endif
 // Send data to a peer
@@ -711,7 +707,11 @@ typedef struct
     char *               altPath;
     lwm2m_peer_t *     bootstrapServerList;
     lwm2m_peer_t *     serverList;
+
+#ifdef CONFIG_LWM2M_CLIENT_C2C
     lwm2m_peer_t   *     clientList;  /**< list of clients for client-to-client communication */
+#endif
+
     lwm2m_object_t *     objectList;
     lwm2m_observed_t *   observedList;
 #endif
@@ -741,7 +741,6 @@ int lwm2m_step(lwm2m_context_t * contextP, time_t * timeoutP);
 void lwm2m_handle_packet(lwm2m_context_t * contextP, uint8_t * buffer, int length, void * fromSessionH);
 
 #ifdef LWM2M_CLIENT_MODE
-#ifdef LWM2M_CLIENT_C2C
 /**
  * @brief It should attempt to start a connection with another client.
  *
@@ -796,8 +795,6 @@ void lwm2m_refresh_client_list(lwm2m_context_t *context);
  * @return Number of bytes of the response. On error the value is <= 0.
  */
 int lwm2m_get_unknown_conn_response(lwm2m_context_t *context, uint8_t *in, int in_len, uint8_t *out, int out_len);
-
-#endif
 
 // configure the client side with the Endpoint Name, binding, MSISDN (can be nil), alternative path
 // for objects (can be nil) and a list of objects.
