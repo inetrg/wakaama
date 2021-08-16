@@ -167,6 +167,7 @@ typedef enum {
   COAP_OPTION_OBSERVE = 6,        /* 0-3 B */
   COAP_OPTION_URI_PORT = 7,       /* 0-2 B */
   COAP_OPTION_LOCATION_PATH = 8,  /* 0-255 B */
+  COAP_OPTION_OSCORE = 9,         /* 0-255 B */
   COAP_OPTION_URI_PATH = 11,      /* 0-255 B */
   COAP_OPTION_CONTENT_TYPE = 12,  /* 0-2 B */
   COAP_OPTION_MAX_AGE = 14,       /* 0-4 B */
@@ -235,6 +236,7 @@ typedef struct {
   size_t uri_host_len;
   const uint8_t *uri_host;
   multi_option_t *location_path;
+  multi_option_t *oscore;
   uint16_t uri_port;
   size_t location_query_len;
   uint8_t *location_query;

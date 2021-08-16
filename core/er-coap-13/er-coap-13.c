@@ -786,6 +786,11 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
         PRINTF("Uri-Query [%.*s]\n", option_length, current_option);
         break;
 
+      case COAP_OPTION_OSCORE:
+        coap_add_multi_option(&(coap_pkt->oscore), current_option, option_length, 1);
+        PRINTF("OSCORE [%.*s]\n", option_length, current_option);
+        break;
+
       case COAP_OPTION_LOCATION_PATH:
         coap_add_multi_option( &(coap_pkt->location_path), current_option, option_length, 1);
         break;
