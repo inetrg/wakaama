@@ -95,6 +95,9 @@ void    lwm2m_trace_free(void * mem, const char * file, const char * function, i
 #define lwm2m_malloc(S) lwm2m_trace_malloc(S, __FILE__, __FUNCTION__, __LINE__)
 #define lwm2m_free(M)   lwm2m_trace_free(M, __FILE__, __FUNCTION__, __LINE__)
 #endif
+
+int lwm2m_random(void);
+
 // Compare at most the n first bytes of s1 and s2, return 0 if they match
 int lwm2m_strncmp(const char * s1, const char * s2, size_t n);
 // This function must return the number of seconds elapsed since origin.
