@@ -409,11 +409,9 @@ coap_free_header(void *packet)
     free_multi_option(coap_pkt->uri_path);
     free_multi_option(coap_pkt->uri_query);
     free_multi_option(coap_pkt->location_path);
-    free_multi_option(coap_pkt->oscore);
     coap_pkt->uri_path = NULL;
     coap_pkt->uri_query = NULL;
     coap_pkt->location_path = NULL;
-    coap_pkt->oscore = NULL;
 }
 
 /*-----------------------------------------------------------------------------------*/
@@ -789,7 +787,9 @@ coap_parse_message(void *packet, uint8_t *data, uint16_t data_len)
         break;
 
       case COAP_OPTION_OSCORE:
-        coap_add_multi_option(&(coap_pkt->oscore), current_option, option_length, 1);
+        /* coap_add_multi_option(&(coap_pkt->oscore), current_option, option_length, 1); */
+        coap_pkt->oscore = current_option;
+        coap_pkt->oscore_len = option_length;
         PRINTF("OSCORE [%.*s]\n", option_length, current_option);
         break;
 

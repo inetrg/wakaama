@@ -236,7 +236,9 @@ typedef struct {
   size_t uri_host_len;
   const uint8_t *uri_host;
   multi_option_t *location_path;
-  multi_option_t *oscore;
+  /* multi_option_t *oscore;*/
+  const uint8_t *oscore;
+  size_t oscore_len;
   uint16_t uri_port;
   size_t location_query_len;
   uint8_t *location_query;
