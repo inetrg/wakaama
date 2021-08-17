@@ -409,9 +409,11 @@ coap_free_header(void *packet)
     free_multi_option(coap_pkt->uri_path);
     free_multi_option(coap_pkt->uri_query);
     free_multi_option(coap_pkt->location_path);
+    free_multi_option(coap_pkt->oscore);
     coap_pkt->uri_path = NULL;
     coap_pkt->uri_query = NULL;
     coap_pkt->location_path = NULL;
+    coap_pkt->oscore = NULL;
 }
 
 /*-----------------------------------------------------------------------------------*/
